@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { yeniEntrySchema } from "@/lib/validations/entry";
 import { deleteCache } from "@/lib/redis";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
-import { sanitizeInput } from "@/lib/utils/security";
+import { sanitizeInput, checkYasakliKelime } from "@/lib/utils/security";
 import { processMentions, createNotification } from "@/lib/notifications";
 
 export async function POST(
@@ -54,6 +54,14 @@ export async function POST(
   }
 
   const sanitizedContent = sanitizeInput(parsed.data.content);
+
+  const yasakli = checkYasakliKelime(sanitizedContent);
+  if (yasakli) {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN_CONTENT", message: "yasaklı içerik tespit edildi" } },
+      { status: 403 }
+    );
+  }
 
   const entry = await prisma.entry.create({
     data: {

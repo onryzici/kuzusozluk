@@ -178,6 +178,18 @@ export default function KullanicilarPage() {
                       >
                         {user.isBanned ? "bani kaldir" : "banla"}
                       </button>
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm(`${user.username} hesabını ve tüm içeriklerini kalıcı olarak silmek istediğinize emin misiniz?`)) return;
+                          const res = await fetch(`/api/admin/kullanicilar/${user.username}`, { method: "DELETE" });
+                          const json = await res.json();
+                          if (json.success) fetchUsers();
+                          else alert(json.error?.message || "hata");
+                        }}
+                        className="text-[11px] px-2 py-1 rounded bg-red-900 text-white hover:bg-red-800"
+                      >
+                        sil
+                      </button>
                     </td>
                   </tr>
                 ))}

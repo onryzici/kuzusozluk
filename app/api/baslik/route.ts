@@ -5,6 +5,7 @@ import { yeniBaslikSchema } from "@/lib/validations/baslik";
 import { toSlug } from "@/lib/utils/slug";
 import { getCache, setCache, deleteCache, TTL } from "@/lib/redis";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
+import { checkYasakliKelime } from "@/lib/utils/security";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -84,6 +85,15 @@ export async function POST(request: NextRequest) {
   }
 
   const { title, description } = parsed.data;
+
+  const yasakli = checkYasakliKelime(title + " " + (description || ""));
+  if (yasakli) {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN_CONTENT", message: "yasaklı içerik tespit edildi" } },
+      { status: 403 }
+    );
+  }
+
   let slug = toSlug(title);
 
   // Slug unique kontrolü

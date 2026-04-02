@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { yorumSchema } from "@/lib/validations/yorum";
 import { createNotification, processMentions } from "@/lib/notifications";
+import { checkYasakliKelime } from "@/lib/utils/security";
 
 export async function GET(
   _request: NextRequest,
@@ -62,6 +63,14 @@ export async function POST(
           },
         },
         { status: 400 }
+      );
+    }
+
+    const yasakli = checkYasakliKelime(parsed.data.content);
+    if (yasakli) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN_CONTENT", message: "yasaklı içerik tespit edildi" } },
+        { status: 403 }
       );
     }
 

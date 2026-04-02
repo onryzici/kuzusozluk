@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const updateSchema = z.object({
   isBanned: z.boolean().optional(),
-  role: z.enum(["USER", "AUTHOR", "MODERATOR", "ADMIN"]).optional(),
+  role: z.enum(["CAYLAK", "USER", "AUTHOR", "MODERATOR", "ADMIN"]).optional(),
 });
 
 type Params = { params: Promise<{ username: string }> };
@@ -46,7 +46,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  const data: { isBanned?: boolean; role?: "USER" | "AUTHOR" | "MODERATOR" | "ADMIN" } = {};
+  const data: { isBanned?: boolean; role?: "CAYLAK" | "USER" | "AUTHOR" | "MODERATOR" | "ADMIN" } = {};
   if (parsed.data.isBanned !== undefined) data.isBanned = parsed.data.isBanned;
   if (parsed.data.role !== undefined) data.role = parsed.data.role;
 
@@ -62,4 +62,53 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json({ success: true, data: updated });
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN", message: "yetkiniz yok" } },
+      { status: 403 }
+    );
+  }
+
+  const { username } = await params;
+  const user = await prisma.user.findUnique({ where: { username }, select: { id: true } });
+  if (!user) {
+    return NextResponse.json(
+      { success: false, error: { code: "NOT_FOUND", message: "kullanıcı bulunamadı" } },
+      { status: 404 }
+    );
+  }
+
+  if (user.id === session.user.id) {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN", message: "kendinizi silemezsiniz" } },
+      { status: 403 }
+    );
+  }
+
+  // kullanıcının tüm entry id'lerini bul
+  const entryIds = (await prisma.entry.findMany({
+    where: { authorId: user.id },
+    select: { id: true },
+  })).map((e) => e.id);
+
+  await prisma.$transaction([
+    prisma.notification.deleteMany({ where: { OR: [{ userId: user.id }, { actorId: user.id }] } }),
+    prisma.topicFollow.deleteMany({ where: { userId: user.id } }),
+    prisma.report.deleteMany({ where: { reporterId: user.id } }),
+    prisma.vote.deleteMany({ where: { OR: [{ userId: user.id }, { entryId: { in: entryIds } }] } }),
+    prisma.favorite.deleteMany({ where: { OR: [{ userId: user.id }, { entryId: { in: entryIds } }] } }),
+    prisma.comment.deleteMany({ where: { OR: [{ authorId: user.id }, { entryId: { in: entryIds } }] } }),
+    prisma.report.deleteMany({ where: { entryId: { in: entryIds } } }),
+    prisma.entry.deleteMany({ where: { authorId: user.id } }),
+    prisma.follow.deleteMany({ where: { OR: [{ followerId: user.id }, { followingId: user.id }] } }),
+    prisma.message.deleteMany({ where: { OR: [{ senderId: user.id }, { receiverId: user.id }] } }),
+    prisma.emailToken.deleteMany({ where: { userId: user.id } }),
+    prisma.user.delete({ where: { id: user.id } }),
+  ]);
+
+  return NextResponse.json({ success: true, data: { deleted: true } });
 }

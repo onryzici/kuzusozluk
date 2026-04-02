@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { mesajSchema } from "@/lib/validations/mesaj";
 import { createNotification } from "@/lib/notifications";
+import { checkYasakliKelime } from "@/lib/utils/security";
 
 // GET /api/mesaj — List conversations for current user (grouped by other user)
 export async function GET() {
@@ -116,6 +117,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, error: { code: "SELF_MESSAGE", message: "Kendinize mesaj gönderemezsiniz" } },
       { status: 400 }
+    );
+  }
+
+  const yasakli = checkYasakliKelime(content);
+  if (yasakli) {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN_CONTENT", message: "yasaklı içerik tespit edildi" } },
+      { status: 403 }
     );
   }
 

@@ -8,7 +8,7 @@ import { parseEntryContent } from "@/lib/utils/entryParser";
 import OyButonlari from "./OyButonlari";
 import YorumListesi from "./YorumListesi";
 import EntryEditor from "./EntryEditor";
-import { Share2, MoreHorizontal, Link2, Flag, Pencil } from "lucide-react";
+import { Share2, MoreHorizontal, Link2, Flag, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type EntryKartProps = {
@@ -25,6 +25,7 @@ type EntryKartProps = {
   isCaylak?: boolean;
   currentUserId?: string | null;
   authorId?: string;
+  currentUserRole?: string | null;
 };
 
 export default function EntryKart({
@@ -40,8 +41,12 @@ export default function EntryKart({
   isCaylak = false,
   currentUserId,
   authorId,
+  currentUserRole,
 }: EntryKartProps) {
   const isOwner = !!(currentUserId && authorId && currentUserId === authorId);
+  const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "MODERATOR";
+  const canDelete = isOwner || isAdmin;
+  const [deleted, setDeleted] = useState(false);
   const [currentContent, setCurrentContent] = useState(content);
   const [currentIsEdited, setCurrentIsEdited] = useState(isEdited);
   const [editing, setEditing] = useState(false);
@@ -95,6 +100,23 @@ export default function EntryKart({
       window.prompt("linki kopyalayın:", url);
     }
   }
+
+  async function handleDelete() {
+    if (!window.confirm("bu entry'yi silmek istediğinize emin misiniz?")) return;
+    try {
+      const res = await fetch(`/api/entry/${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        setDeleted(true);
+      } else {
+        toast.error(json.error?.message || "silinemedi");
+      }
+    } catch {
+      toast.error("bir hata oluştu");
+    }
+  }
+
+  if (deleted) return null;
 
   return (
     <article className="py-4 border-b border-border/40" id={`entry-${id}`}>
@@ -190,8 +212,19 @@ export default function EntryKart({
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left text-destructive"
                   >
-                    <Flag className="h-3 w-3" /> sikayet et
+                    <Flag className="h-3 w-3" /> şikayet et
                   </button>
+                  {canDelete && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        handleDelete();
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" /> entry'yi sil
+                    </button>
+                  )}
                 </div>
               </>
             )}

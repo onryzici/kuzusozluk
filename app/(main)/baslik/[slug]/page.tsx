@@ -7,6 +7,7 @@ import EntryForm from "@/components/entry/EntryForm";
 import Sayfalama from "@/components/shared/Sayfalama";
 import BaslikYokSayfa from "@/components/baslik/BaslikYokSayfa";
 import SiralamaSekmeleri from "@/components/entry/SiralamaSekmeleri";
+import AdminBaslikIslemleri from "@/components/baslik/AdminBaslikIslemleri";
 import { auth } from "@/lib/auth";
 
 type Props = {
@@ -142,12 +143,21 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
           entryCount={topic.entryCount}
           createdAt={topic.createdAt.toISOString()}
         />
-        {session?.user && (
-          <BaslikTakipButon
-            topicSlug={slug}
-            initialIsFollowing={isFollowingTopic}
-          />
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {session?.user && (
+            <BaslikTakipButon
+              topicSlug={slug}
+              initialIsFollowing={isFollowingTopic}
+            />
+          )}
+          {userRole === "ADMIN" && (
+            <AdminBaslikIslemleri
+              slug={slug}
+              isLocked={topic.isLocked}
+              isPinned={topic.isPinned}
+            />
+          )}
+        </div>
       </div>
       <SiralamaSekmeleri slug={slug} current={siralama} />
       <div className="space-y-4">
@@ -166,6 +176,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
             isCaylak={entry.author.role === "CAYLAK"}
             currentUserId={currentUserId}
             authorId={entry.author.id}
+            currentUserRole={userRole}
           />
         ))}
       </div>

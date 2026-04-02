@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique @db.VarChar(30)
+  email        String   @unique
+  passwordHash String
+  displayName  String?  @db.VarChar(50)
+  bio          String?  @db.Text
+  avatarUrl    String?
+  role         Role     @default(CAYLAK)
+  isActive     Boolean  @default(false)
+  isBanned     Boolean  @default(false)
+  karma        Int      @default(0)
+  entryCount   Int      @default(0)
+  generation   Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lastSeen  DateTime @default(now())
+
+  entries   Entry[]
+  votes     Vote[]     @relation("Upvoter")
+  favorites Favorite[]
+  following Follow[]   @relation("Follower")
+  followers Follow[]   @relation("Following")
+  messages  Message[]  @relation("Sender")
+  comments    Comment[]
+  reports     Report[]     @relation("Reporter")
+  emailTokens EmailToken[]
+  notifications      Notification[] @relation("NotificationReceiver")
+  actedNotifications Notification[] @relation("NotificationActor")
+  topicFollows TopicFollow[]
+  announcements Announcement[] @relation("AnnouncementAuthor")
+
+  @@index([username])
+  @@index([karma])
+}
+
+enum Role {
+  CAYLAK
+  USER
+  AUTHOR
+  MODERATOR
+  ADMIN
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  title       String   @unique @db.VarChar(200)
+  slug        String   @unique @db.VarChar(220)
+  description String?  @db.Text
+  entryCount  Int      @default(0)
+  dayCount    Int      @default(0)
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries Entry[]
+  tags    TopicTag[]
+  topicFollows TopicFollow[]
+
+  @@index([slug])
+  @@index([dayCount])
+  @@index([entryCount])
+}
+
+model Entry {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  upvotes   Int      @default(0)
+  downvotes Int      @default(0)
+  isEdited  Boolean  @default(false)
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String
+  topic    Topic  @relation(fields: [topicId], references: [id])
+  topicId  String
+
+  votes     Vote[]
+  favorites Favorite[]
+  comments  Comment[]
+  reports   Report[]
+
+  @@index([topicId, createdAt])
+  @@index([authorId])
+  @@index([upvotes])
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  type      VoteType
+  createdAt DateTime @default(now())
+
+  user    User   @relation("Upvoter", fields: [userId], references: [id])
+  userId  String
+  entry   Entry  @relation(fields: [entryId], references: [id])
+  entryId String
+
+  @@unique([userId, entryId])
+  @@index([entryId])
+}
+
+enum VoteType {
+  UP
+  DOWN
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user    User   @relation(fields: [userId], references: [id])
+  userId  String
+  entry   Entry  @relation(fields: [entryId], references: [id])
+  entryId String
+
+  @@unique([userId, entryId])
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  follower    User   @relation("Follower", fields: [followerId], references: [id])
+  followerId  String
+  following   User   @relation("Following", fields: [followingId], references: [id])
+  followingId String
+
+  @@unique([followerId, followingId])
+}
+
+model Tag {
+  id     String     @id @default(cuid())
+  name   String     @unique @db.VarChar(50)
+  topics TopicTag[]
+}
+
+model TopicTag {
+  topic   Topic  @relation(fields: [topicId], references: [id])
+  topicId String
+  tag     Tag    @relation(fields: [tagId], references: [id])
+  tagId   String
+
+  @@id([topicId, tagId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String   @db.Text
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender     User   @relation("Sender", fields: [senderId], references: [id])
+  senderId   String
+  receiverId String
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.VarChar(1000)
+  createdAt DateTime @default(now())
+
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  entry     Entry    @relation(fields: [entryId], references: [id])
+  entryId   String
+
+  @@index([entryId, createdAt])
+}
+
+model Report {
+  id        String       @id @default(cuid())
+  reason    String       @db.VarChar(500)
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  reporter   User   @relation("Reporter", fields: [reporterId], references: [id])
+  reporterId String
+  entry      Entry  @relation(fields: [entryId], references: [id])
+  entryId    String
+
+  @@index([status])
+  @@index([entryId])
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+model EmailToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  type      TokenType
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  @@index([token])
+}
+
+enum TokenType {
+  ACTIVATION
+  PASSWORD_RESET
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  type      NotificationType
+  content   String             @db.VarChar(500)
+  isRead    Boolean            @default(false)
+  link      String?            @db.VarChar(500)
+  createdAt DateTime           @default(now())
+
+  user      User               @relation("NotificationReceiver", fields: [userId], references: [id])
+  userId    String
+  actor     User               @relation("NotificationActor", fields: [actorId], references: [id])
+  actorId   String
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+enum NotificationType {
+  MENTION
+  REPLY
+  VOTE
+  FOLLOW
+  MESSAGE
+  TOPIC_ENTRY
+}
+
+model TopicFollow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  topic     Topic    @relation(fields: [topicId], references: [id])
+  topicId   String
+
+  @@unique([userId, topicId])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(200)
+  content   String   @db.Text
+  isPinned  Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  authorId  String
+}

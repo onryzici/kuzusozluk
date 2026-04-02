@@ -1,0 +1,31 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { redis } from "@/lib/redis";
+
+function createLimiter(tokens: number, window: `${number} s` | `${number} m` | `${number} h`) {
+  if (!redis) return null;
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(tokens, window),
+    analytics: false,
+  });
+}
+
+export const rateLimiters = {
+  baslikOlustur: createLimiter(10, "1 h"),
+  entryYaz: createLimiter(30, "1 h"),
+  oyVer: createLimiter(100, "1 h"),
+  giris: createLimiter(5, "15 m"),
+};
+
+export async function checkRateLimit(
+  limiter: ReturnType<typeof createLimiter>,
+  identifier: string
+): Promise<{ allowed: boolean; remaining?: number }> {
+  if (!limiter) return { allowed: true };
+  try {
+    const result = await limiter.limit(identifier);
+    return { allowed: result.success, remaining: result.remaining };
+  } catch {
+    return { allowed: true }; // Fail open if Redis unavailable
+  }
+}

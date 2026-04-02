@@ -1,0 +1,22 @@
+import { z } from "zod";
+
+export const kayitSchema = z.object({
+  username: z
+    .string()
+    .min(3, "Kullanıcı adı en az 3 karakter olmalı")
+    .max(30, "Kullanıcı adı en fazla 30 karakter olmalı")
+    .regex(/^[a-zA-Z0-9_]+$/, "Sadece harf, rakam ve alt çizgi kullanılabilir"),
+  email: z.string().email("Geçerli bir e-posta adresi girin"),
+  password: z
+    .string()
+    .min(6, "Şifre en az 6 karakter olmalı")
+    .max(100, "Şifre en fazla 100 karakter olmalı"),
+});
+
+export const girisSchema = z.object({
+  email: z.string().email("Geçerli bir e-posta adresi girin"),
+  password: z.string().min(1, "Şifre gerekli"),
+});
+
+export type KayitInput = z.infer<typeof kayitSchema>;
+export type GirisInput = z.infer<typeof girisSchema>;

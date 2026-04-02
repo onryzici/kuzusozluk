@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 import { yeniBaslikSchema } from "@/lib/validations/baslik";
 import { toSlug } from "@/lib/utils/slug";
 import { getCache, setCache, deleteCache, TTL } from "@/lib/redis";

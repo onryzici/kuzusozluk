@@ -23,7 +23,7 @@ export default function Sidebar() {
 
   const fetchGundem = useCallback(() => {
     setLoading(true);
-    fetch("/api/baslik?siralama=son&boyut=40")
+    fetch("/api/baslik?siralama=son&boyut=40&t=" + Date.now(), { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
         if (json.success) setGundem(json.data);

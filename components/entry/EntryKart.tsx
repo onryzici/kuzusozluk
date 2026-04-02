@@ -47,6 +47,9 @@ export default function EntryKart({
   const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "MODERATOR";
   const canDelete = isOwner || isAdmin;
   const [deleted, setDeleted] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
   const [currentContent, setCurrentContent] = useState(content);
   const [currentIsEdited, setCurrentIsEdited] = useState(isEdited);
   const [editing, setEditing] = useState(false);
@@ -98,6 +101,33 @@ export default function EntryKart({
       });
     } else {
       window.prompt("linki kopyalayın:", url);
+    }
+  }
+
+  async function handleReport() {
+    if (!reportReason.trim() || reportReason.trim().length < 5) {
+      toast.error("şikayet sebebi en az 5 karakter olmalı");
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const res = await fetch(`/api/entry/${id}/sikayet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reportReason.trim() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("şikayet gönderildi");
+        setReportOpen(false);
+        setReportReason("");
+      } else {
+        toast.error(json.error?.message || "bir hata oluştu");
+      }
+    } catch {
+      toast.error("bir hata oluştu");
+    } finally {
+      setReportLoading(false);
     }
   }
 
@@ -209,7 +239,10 @@ export default function EntryKart({
                     <Link2 className="h-3 w-3" /> link kopyala
                   </button>
                   <button
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setReportOpen(true);
+                    }}
                     className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left text-destructive"
                   >
                     <Flag className="h-3 w-3" /> şikayet et
@@ -270,6 +303,44 @@ export default function EntryKart({
       </div>
 
       <YorumListesi entryId={id} initialCount={commentCount} />
+
+      {/* şikayet modal */}
+      {reportOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setReportOpen(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-popover border border-border rounded-lg shadow-xl w-full max-w-sm p-4">
+              <h3 className="text-sm font-medium mb-3">entry'yi şikayet et</h3>
+              <textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="şikayet sebebini yazın (en az 5 karakter)..."
+                rows={3}
+                maxLength={500}
+                className="w-full text-sm p-2 border border-border rounded-md bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-[10px] text-muted-foreground">{reportReason.length}/500</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setReportOpen(false); setReportReason(""); }}
+                    className="px-3 py-1 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent"
+                  >
+                    vazgeç
+                  </button>
+                  <button
+                    onClick={handleReport}
+                    disabled={reportLoading || reportReason.trim().length < 5}
+                    className="px-3 py-1 text-xs bg-destructive text-white rounded hover:bg-destructive/90 disabled:opacity-50"
+                  >
+                    {reportLoading ? "gönderiliyor..." : "şikayet et"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </article>
   );
 }

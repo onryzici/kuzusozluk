@@ -1,75 +1,96 @@
 import { toSlug } from "./slug";
 
 /**
- * Entry icerigini parse eder:
- * - (bkz: baslik adi) -> link
- * - http/https URL'leri -> link
- * - `baslik adi` (backtick) -> link
- * - **bold** -> strong
- * - *italic* -> italic
- * - -spoiler-text--spoiler-- -> spoiler span
- * - [gorsel: url] -> img tag
- * - @username -> kullanici profil linki
+ * Entry içeriğini parse eder:
+ * - (bkz: başlık adı) → link
+ * - `başlık adı` (backtick) → link
+ * - -spoiler-metin--spoiler-- → spoiler
+ * - [görsel: url] → resim
+ * - [link: url](metin) → link with text
+ * - http/https URL → tıklanabilir link
+ * - @username → kullanıcı profil linki
+ * - **kalın** → bold
+ * - *italik* → italic
  */
 export function parseEntryContent(content: string): string {
   let result = escapeHtml(content);
 
-  // (bkz: baslik adi) -> link
+  // placeholder sistemi: parse edilen kısımları korumak için
+  const placeholders: string[] = [];
+  function placeholder(html: string): string {
+    const idx = placeholders.length;
+    placeholders.push(html);
+    return `%%PH${idx}%%`;
+  }
+
+  // (bkz: başlık adı) → link
   result = result.replace(
     /\(bkz:\s*([^)]+)\)/g,
     (_, title) => {
       const slug = toSlug(title.trim());
-      return `<a href="/baslik/${slug}" class="bkz">(bkz: ${title.trim()})</a>`;
+      return placeholder(`<a href="/baslik/${slug}" class="bkz">(bkz: ${title.trim()})</a>`);
     }
   );
 
-  // `baslik adi` -> link (Eksi tarzi)
+  // `başlık adı` → link
   result = result.replace(
     /`([^`]+)`/g,
     (_, title) => {
       const slug = toSlug(title.trim());
-      return `<a href="/baslik/${slug}" class="bkz">${title.trim()}</a>`;
+      return placeholder(`<a href="/baslik/${slug}" class="bkz">${title.trim()}</a>`);
     }
   );
 
-  // -spoiler-text--spoiler-- -> spoiler (must come before URL and bold parsing)
+  // -spoiler-metin--spoiler-- → spoiler
   result = result.replace(
     /-spoiler-([\s\S]*?)--spoiler--/g,
-    (_, text) =>
-      `<span class="spoiler" onclick="this.classList.toggle('revealed')">${text}</span>`
+    (_, text) => placeholder(`<span class="spoiler" onclick="this.classList.toggle('revealed')">${text}</span>`)
   );
 
-  // [gorsel: url] -> img tag (sanitize: only allow http/https URLs)
+  // [görsel: url] veya [gorsel: url] → resim
   result = result.replace(
-    /\[gorsel:\s*(https?:\/\/[^\]\s]+)\]/g,
-    (_, url) =>
-      `<img src="${url}" alt="gorsel" class="max-w-full rounded-md my-2" loading="lazy" />`
+    /\[g[oö]rsel:\s*(https?:\/\/[^\]\s]+)\]/g,
+    (_, url) => placeholder(`<img src="${url}" alt="görsel" class="max-w-full rounded-md my-2" loading="lazy" />`)
   );
 
-  // http/https URL -> link
+  // [metin](url) → markdown tarzı link
+  result = result.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    (_, text, url) => placeholder(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${text}</a>`)
+  );
+
+  // http/https URL → tıklanabilir link (placeholder'ların içindeki URL'leri atla)
   result = result.replace(
     /(https?:\/\/[^\s<]+)/g,
-    (url) =>
-      `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline break-all">${url}</a>`
+    (url) => {
+      // zaten placeholder içindeyse dokunma
+      if (url.includes("%%PH")) return url;
+      return placeholder(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline break-all">${url}</a>`);
+    }
   );
 
-  // @username -> kullanici profil linki
+  // @username → kullanıcı profil linki
   result = result.replace(
     /@([a-zA-Z0-9_]+)/g,
-    '<a href="/kullanici/$1" class="text-primary hover:underline font-medium">@$1</a>'
+    (match, username) => placeholder(`<a href="/kullanici/${username}" class="text-primary hover:underline font-medium">@${username}</a>`)
   );
 
-  // **bold** -> strong (must come before single * italic)
+  // **kalın** → bold
   result = result.replace(
     /\*\*([^*]+)\*\*/g,
     (_, text) => `<strong>${text}</strong>`
   );
 
-  // *text* -> italic
+  // *italik* → italic
   result = result.replace(
     /\*([^*]+)\*/g,
     (_, text) => `<em>${text}</em>`
   );
+
+  // placeholder'ları geri koy
+  for (let i = 0; i < placeholders.length; i++) {
+    result = result.replace(`%%PH${i}%%`, placeholders[i]);
+  }
 
   return result;
 }

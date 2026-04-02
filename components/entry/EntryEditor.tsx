@@ -157,11 +157,11 @@ export default function EntryEditor({
   }
 
   function handleLink() {
-    insertAtCursor("[link text](", ")");
+    insertAtCursor("[link metni](https://", ")");
   }
 
   function handleGorsel() {
-    insertAtCursor("[gorsel: ", "]");
+    insertAtCursor("[görsel: https://", "]");
   }
 
   // --- @ mention detection ---

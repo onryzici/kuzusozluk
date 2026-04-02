@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { LogIn, LogOut, User, Menu, Settings, Mail, Shield, PenLine } from "lucide-react";
+import { LogIn, LogOut, User, Menu, Settings, Mail, Shield, PenLine, BarChart3, HelpCircle } from "lucide-react";
 import AramaKutusu from "@/components/shared/AramaKutusu";
 import MesajBildirim from "@/components/shared/MesajBildirim";
 import BildirimMenusu from "@/components/shared/BildirimMenusu";
@@ -70,6 +70,16 @@ export default function Header() {
                   <DropdownMenuItem>
                     <Link href="/ayarlar" className="flex items-center gap-2 w-full text-xs">
                       <Settings className="h-3 w-3" /> ayarlar
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Link href="/istatistikler" className="flex items-center gap-2 w-full text-xs">
+                      <BarChart3 className="h-3 w-3" /> istatistikler
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Link href="/sss" className="flex items-center gap-2 w-full text-xs">
+                      <HelpCircle className="h-3 w-3" /> sss
                     </Link>
                   </DropdownMenuItem>
                   {(session.user as any).role === "ADMIN" && (

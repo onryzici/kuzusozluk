@@ -40,14 +40,26 @@ export async function GET(request: NextRequest) {
         dayCount: true,
         isPinned: true,
         createdAt: true,
+        _count: { select: { entries: true } },
       },
     }),
     prisma.topic.count(),
   ]);
 
+  // gerçek entry sayısını _count'tan al
+  const data = topics.map((t) => ({
+    id: t.id,
+    title: t.title,
+    slug: t.slug,
+    entryCount: t._count.entries,
+    dayCount: t.dayCount,
+    isPinned: t.isPinned,
+    createdAt: t.createdAt,
+  }));
+
   const response = {
     success: true,
-    data: topics,
+    data,
     meta: { total, page, pageSize, hasMore: page * pageSize < total },
   };
 
@@ -55,7 +67,9 @@ export async function GET(request: NextRequest) {
     await setCache("gundem:list", response, TTL.GUNDEM);
   }
 
-  return NextResponse.json(response);
+  return NextResponse.json(response, {
+    headers: { "Cache-Control": "no-store, max-age=0" },
+  });
 }
 
 export async function POST(request: NextRequest) {

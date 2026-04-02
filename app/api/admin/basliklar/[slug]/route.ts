@@ -15,26 +15,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN", message: "Yetkiniz yok" } },
+      { success: false, error: { code: "FORBIDDEN", message: "yetkiniz yok" } },
       { status: 403 }
     );
   }
 
   const { slug } = await params;
-  const topic = await prisma.topic.findUnique({ where: { slug } });
-  if (!topic) {
-    return NextResponse.json(
-      { success: false, error: { code: "NOT_FOUND", message: "Baslik bulunamadi" } },
-      { status: 404 }
-    );
-  }
-
   const body = await request.json();
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    const message = parsed.error.issues?.[0]?.message || "Gecersiz veri";
     return NextResponse.json(
-      { success: false, error: { code: "VALIDATION_ERROR", message } },
+      { success: false, error: { code: "VALIDATION_ERROR", message: "geçersiz veri" } },
       { status: 400 }
     );
   }
@@ -50,8 +41,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   await deleteCache(`baslik:${slug}`);
-  await deleteCache("gundem:list");
-
   return NextResponse.json({ success: true, data: updated });
 }
 
@@ -59,34 +48,37 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN", message: "Yetkiniz yok" } },
+      { success: false, error: { code: "FORBIDDEN", message: "yetkiniz yok" } },
       { status: 403 }
     );
   }
 
   const { slug } = await params;
-  const topic = await prisma.topic.findUnique({ where: { slug } });
+  const topic = await prisma.topic.findUnique({ where: { slug }, select: { id: true } });
   if (!topic) {
     return NextResponse.json(
-      { success: false, error: { code: "NOT_FOUND", message: "Baslik bulunamadi" } },
+      { success: false, error: { code: "NOT_FOUND", message: "başlık bulunamadı" } },
       { status: 404 }
     );
   }
 
-  // Iliskili entryleri ve oylarini sil
-  const entries = await prisma.entry.findMany({
+  const entryIds = (await prisma.entry.findMany({
     where: { topicId: topic.id },
     select: { id: true },
-  });
-  const entryIds = entries.map((e) => e.id);
+  })).map((e) => e.id);
 
-  await prisma.vote.deleteMany({ where: { entryId: { in: entryIds } } });
-  await prisma.favorite.deleteMany({ where: { entryId: { in: entryIds } } });
-  await prisma.comment.deleteMany({ where: { entryId: { in: entryIds } } });
-  await prisma.report.deleteMany({ where: { entryId: { in: entryIds } } });
-  await prisma.entry.deleteMany({ where: { topicId: topic.id } });
-  await prisma.topicTag.deleteMany({ where: { topicId: topic.id } });
-  await prisma.topic.delete({ where: { slug } });
+  // tek transaction ile hepsini sil
+  await prisma.$transaction([
+    prisma.notification.deleteMany({ where: { link: { contains: slug } } }),
+    prisma.vote.deleteMany({ where: { entryId: { in: entryIds } } }),
+    prisma.favorite.deleteMany({ where: { entryId: { in: entryIds } } }),
+    prisma.comment.deleteMany({ where: { entryId: { in: entryIds } } }),
+    prisma.report.deleteMany({ where: { entryId: { in: entryIds } } }),
+    prisma.entry.deleteMany({ where: { topicId: topic.id } }),
+    prisma.topicFollow.deleteMany({ where: { topicId: topic.id } }),
+    prisma.topicTag.deleteMany({ where: { topicId: topic.id } }),
+    prisma.topic.delete({ where: { id: topic.id } }),
+  ]);
 
   await deleteCache(`baslik:${slug}`);
   await deleteCache("gundem:list");

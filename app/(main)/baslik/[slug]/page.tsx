@@ -93,15 +93,19 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
   // Check if current user follows this topic
   let isFollowingTopic = false;
   if (session?.user) {
-    const topicFollow = await prisma.topicFollow.findUnique({
-      where: {
-        userId_topicId: {
-          userId: (session.user as any).id,
-          topicId: topic.id,
+    try {
+      const topicFollow = await prisma.topicFollow.findUnique({
+        where: {
+          userId_topicId: {
+            userId: (session.user as any).id,
+            topicId: topic.id,
+          },
         },
-      },
-    });
-    isFollowingTopic = !!topicFollow;
+      });
+      isFollowingTopic = !!topicFollow;
+    } catch {
+      // TopicFollow tablosu henüz yoksa sessizce devam et
+    }
   }
 
   // çaylak entry'lerini sadece admin/mod görebilir

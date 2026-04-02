@@ -31,8 +31,8 @@ export default function AvatarYukle({ currentAvatarUrl, username }: AvatarYukleP
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMessage("dosya boyutu en fazla 2MB olabilir");
+    if (file.size > 500 * 1024) {
+      setErrorMessage("dosya boyutu en fazla 500KB olabilir");
       setStatus("error");
       return;
     }
@@ -139,7 +139,7 @@ export default function AvatarYukle({ currentAvatarUrl, username }: AvatarYukleP
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground">{username}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          jpg, png veya webp. en fazla 2MB.
+          jpg, png veya webp. en fazla 500KB.
         </p>
 
         {selectedFile && (

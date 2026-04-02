@@ -12,6 +12,7 @@ type GundemItem = {
   slug: string;
   dayCount: number;
   entryCount: number;
+  isPinned?: boolean;
 };
 
 export default function Sidebar() {
@@ -69,7 +70,12 @@ export default function Sidebar() {
           </div>
 
           <nav>
-            {gundem.map((item) => (
+            {/* sabitlenmiş başlıklar önce, sonra geri kalanlar */}
+            {[...gundem].sort((a, b) => {
+              if (a.isPinned && !b.isPinned) return -1;
+              if (!a.isPinned && b.isPinned) return 1;
+              return 0;
+            }).map((item) => (
               <Link
                 key={item.id}
                 href={`/baslik/${item.slug}`}
@@ -80,7 +86,10 @@ export default function Sidebar() {
                     : "text-foreground/80 hover:bg-accent/70"
                 }`}
               >
-                <span className="truncate pr-2">{item.title}</span>
+                <span className={`truncate pr-2 ${item.isPinned ? "font-bold" : ""}`}>
+                  {item.isPinned && <span className="text-primary mr-1">•</span>}
+                  {item.title}
+                </span>
                 <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                   {item.dayCount > 0 ? item.dayCount : item.entryCount}
                 </span>

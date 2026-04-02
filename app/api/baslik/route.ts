@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         slug: true,
         entryCount: true,
         dayCount: true,
+        isPinned: true,
         createdAt: true,
       },
     }),

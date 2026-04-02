@@ -138,6 +138,7 @@ export default function EntryKart({
       const json = await res.json();
       if (json.success) {
         setDeleted(true);
+        window.dispatchEvent(new Event("sidebar:refresh"));
       } else {
         toast.error(json.error?.message || "silinemedi");
       }

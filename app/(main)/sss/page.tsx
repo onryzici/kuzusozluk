@@ -37,9 +37,9 @@ const faqItems = [
       'bir basligin detay sayfasina girdikten sonra basligin yanindaki "takip et" butonuna tiklayarak o basligi takip edebilirsiniz. takip ettiginiz basliklara yeni entry yazildiginda bildirim alirsiniz.',
   },
   {
-    question: "debe nedir?",
+    question: "bebe nedir?",
     answer:
-      'debe, "dunun en begenilen entryleri" anlamina gelir. onceki gun yazilmis entryler arasinda en cok begeni alan entryler debe listesinde yer alir.',
+      'bebe, "bugünün en beğenilen entryleri" anlamına gelir. en çok beğeni alan entryler bebe listesinde yer alır.',
   },
   {
     question: "nasil admin olunur?",

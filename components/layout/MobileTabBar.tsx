@@ -50,7 +50,7 @@ export default function MobileTabBar() {
       label: "ana sayfa",
       icon: Home,
       href: "/",
-      matchPaths: ["/", "/gundem", "/debe", "/takip", "/son"],
+      matchPaths: ["/", "/gundem", "/bebe", "/takip", "/son"],
     },
     {
       key: "search",
@@ -87,7 +87,7 @@ export default function MobileTabBar() {
       return (
         pathname === "/" ||
         pathname === "/gundem" ||
-        pathname === "/debe" ||
+        pathname === "/bebe" ||
         pathname === "/takip" ||
         pathname === "/son" ||
         pathname?.startsWith("/baslik/") === true

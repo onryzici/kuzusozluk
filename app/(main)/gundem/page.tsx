@@ -64,10 +64,10 @@ export default async function GundemSayfa() {
 
       <div className="mt-8 border-t border-border/50 pt-4">
         <Link
-          href="/debe"
+          href="/bebe"
           className="text-xs text-primary hover:underline"
         >
-          daha fazla &rarr; günün en beğenilen entryleri (debe)
+          daha fazla &rarr; bugünün en beğenilen entryleri (bebe)
         </Link>
       </div>
     </div>

@@ -100,18 +100,38 @@ export async function POST(
       },
     });
 
-    // Notify entry author about the reply
+    // entry yazarına bildirim
     if (entry.authorId !== userId) {
       await createNotification({
         type: "REPLY",
-        content: `entry'nize yorum yapildi`,
+        content: `entry'nize yorum yapıldı`,
         link: `/entry/${entryId}`,
         userId: entry.authorId,
         actorId: userId,
       });
     }
 
-    // Process @mentions in comment text
+    // daha önce aynı entry'ye yorum yapmış herkese bildirim
+    const previousCommenters = await prisma.comment.findMany({
+      where: {
+        entryId,
+        authorId: { notIn: [userId, entry.authorId] },
+      },
+      select: { authorId: true },
+      distinct: ["authorId"],
+    });
+
+    for (const commenter of previousCommenters) {
+      await createNotification({
+        type: "REPLY",
+        content: `yorum yaptığınız entry'ye yeni yorum geldi`,
+        link: `/entry/${entryId}`,
+        userId: commenter.authorId,
+        actorId: userId,
+      });
+    }
+
+    // @mention bildirimleri
     await processMentions(parsed.data.content, userId, `/entry/${entryId}`);
 
     return NextResponse.json({ success: true, data: comment }, { status: 201 });

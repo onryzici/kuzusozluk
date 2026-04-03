@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import AramaSayfaInput from "@/components/shared/AramaSayfaInput";
+import { toSlug } from "@/lib/utils/slug";
 
 type Props = {
   searchParams: Promise<{ q?: string; tip?: string }>;
@@ -26,16 +27,33 @@ export default async function AramaSayfa({ searchParams }: Props) {
       take: 50,
       select: { id: true, title: true, slug: true, _count: { select: { entries: true } } },
     });
-    results = topics.length > 0 ? (
-      <div className="divide-y divide-border/30">
-        {topics.map((t) => (
-          <Link key={t.id} href={`/baslik/${t.slug}`} className="flex items-center justify-between py-2.5 px-2 hover:bg-accent/60 transition-colors">
-            <span className="text-sm">{t.title}</span>
-            <span className="text-xs text-muted-foreground ml-2">{t._count.entries}</span>
-          </Link>
-        ))}
-      </div>
-    ) : <p className="text-muted-foreground text-sm text-center py-8">sonuç bulunamadı.</p>;
+    const slug = toSlug(q);
+    const baslikAcLink = (
+      <Link
+        href={`/baslik/${slug}?q=${encodeURIComponent(q)}`}
+        className="flex items-center justify-center py-3 text-sm text-primary hover:underline font-medium border-t border-border/30 mt-2"
+      >
+        &ldquo;{q}&rdquo; başlığını aç
+      </Link>
+    );
+
+    results = (
+      <>
+        {topics.length > 0 ? (
+          <div className="divide-y divide-border/30">
+            {topics.map((t) => (
+              <Link key={t.id} href={`/baslik/${t.slug}`} className="flex items-center justify-between py-2.5 px-2 hover:bg-accent/60 transition-colors">
+                <span className="text-sm">{t.title}</span>
+                <span className="text-xs text-muted-foreground ml-2">{t._count.entries}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm text-center py-4">sonuç bulunamadı.</p>
+        )}
+        {baslikAcLink}
+      </>
+    );
   } else if (tip === "entry") {
     const entries = await prisma.entry.findMany({
       where: { content: { contains: q, mode: "insensitive" } },

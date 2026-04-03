@@ -105,16 +105,19 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
-      {/* mobil üst bar — logo + arama + kullanıcı */}
-      <div className="flex sm:hidden items-center gap-2 h-10 px-3">
-        <Link href="/" className="shrink-0">
+      {/* mobil üst bar — logo + kullanıcı */}
+      <div className="flex sm:hidden items-center justify-between h-10 px-3">
+        <Link href="/" className="flex items-center gap-1.5">
           <span className="text-base">🐑</span>
+          <span className="font-bold text-sm tracking-tight">
+            <span className="text-primary">kuzu</span>
+            <span className="text-foreground">sözlük</span>
+          </span>
         </Link>
-        <div className="flex-1 min-w-0">
-          <AramaKutusu />
+        <div className="flex items-center gap-0.5">
+          <BildirimMenusu />
+          <UserMenu session={session} />
         </div>
-        <BildirimMenusu />
-        <UserMenu session={session} />
       </div>
 
       {/* masaüstü üst bar */}

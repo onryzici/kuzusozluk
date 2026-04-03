@@ -4,6 +4,7 @@ import { hashSync } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { kayitSchema } from "@/lib/validations/auth";
 import { sendEmail, isSmtpConfigured } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(request: Request) {
   try {
@@ -90,14 +91,29 @@ export async function POST(request: Request) {
       `
     );
 
+    // tüm adminlere yeni üye bildirimi
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    });
+    for (const admin of admins) {
+      await createNotification({
+        type: "FOLLOW",
+        content: `yeni üye oldu: ${username}`,
+        link: `/kullanici/${username}`,
+        userId: admin.id,
+        actorId: user.id,
+      });
+    }
+
     return NextResponse.json(
       {
         success: true,
         data: {
           ...user,
           message: smtpReady
-            ? "Kayıt başarılı. Lütfen e-posta adresinizi kontrol edin ve hesabınızı aktifleştirin."
-            : "Kayıt başarılı.",
+            ? "kayıt başarılı. lütfen e-posta adresinizi kontrol edin."
+            : "kayıt başarılı.",
         },
       },
       { status: 201 }

@@ -54,6 +54,12 @@ export default async function AdminPage() {
         >
           duyurulari yonet
         </Link>
+        <Link
+          href="/admin/yasakli"
+          className="text-sm px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
+        >
+          yasakli kelimeler
+        </Link>
       </div>
     </div>
   );

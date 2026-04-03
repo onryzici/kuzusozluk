@@ -1,5 +1,5 @@
 /**
- * XSS koruması — tehlikeli içerik temizleme
+ * XSS koruması
  */
 export function sanitizeInput(input: string): string {
   return input
@@ -10,9 +10,9 @@ export function sanitizeInput(input: string): string {
 }
 
 /**
- * Yasaklı kelime listesi — bu kelimeleri içeren içerikler engellenir
+ * Yasaklı kelime listesi — runtime'da admin tarafından güncellenebilir
  */
-const YASAKLI_KELIMELER = [
+let yasakliKelimeler: string[] = [
   "kürdistan",
   "kurdistan",
   "abdullah öcalan",
@@ -27,13 +27,24 @@ const YASAKLI_KELIMELER = [
   "feto",
 ];
 
-/**
- * İçerikte yasaklı kelime var mı kontrol eder
- * @returns yasaklı kelime varsa kelimeyi döner, yoksa null
- */
+export function getYasakliKelimeler(): string[] {
+  return [...yasakliKelimeler];
+}
+
+export function addYasakliKelime(kelime: string): void {
+  const lower = kelime.toLowerCase().trim();
+  if (lower && !yasakliKelimeler.includes(lower)) {
+    yasakliKelimeler.push(lower);
+  }
+}
+
+export function removeYasakliKelime(kelime: string): void {
+  yasakliKelimeler = yasakliKelimeler.filter((k) => k !== kelime.toLowerCase().trim());
+}
+
 export function checkYasakliKelime(text: string): string | null {
   const lower = text.toLowerCase();
-  for (const kelime of YASAKLI_KELIMELER) {
+  for (const kelime of yasakliKelimeler) {
     if (lower.includes(kelime)) {
       return kelime;
     }

@@ -203,10 +203,12 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         />
       )}
       {session?.user && !topic.isLocked && (
-        <div className="space-y-3">
+        <>
           <EntryForm topicSlug={slug} />
-          <AnketButon topicSlug={slug} />
-        </div>
+          <div className="mt-4 pt-4 border-t border-border/40">
+            <AnketButon topicSlug={slug} />
+          </div>
+        </>
       )}
     </div>
   );

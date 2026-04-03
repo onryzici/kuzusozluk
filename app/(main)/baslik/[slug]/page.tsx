@@ -11,7 +11,6 @@ import BaslikYokSayfa from "@/components/baslik/BaslikYokSayfa";
 import SiralamaSekmeleri from "@/components/entry/SiralamaSekmeleri";
 import AdminBaslikIslemleri from "@/components/baslik/AdminBaslikIslemleri";
 import AnketGoster from "@/components/anket/AnketGoster";
-import AnketButon from "@/components/anket/AnketButon";
 import { auth } from "@/lib/auth";
 
 type Props = {
@@ -168,6 +167,13 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         </div>
       </div>
       <SiralamaSekmeleri slug={slug} current={siralama} />
+      {totalPages > 1 && (
+        <Sayfalama
+          currentPage={page}
+          totalPages={totalPages}
+          basePath={`/baslik/${slug}`}
+        />
+      )}
       <AnketGoster topicSlug={slug} isLoggedIn={!!session?.user} />
       <div className="space-y-4">
         {entries.map((entry, idx) => (
@@ -203,12 +209,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         />
       )}
       {session?.user && !topic.isLocked && (
-        <>
-          <EntryForm topicSlug={slug} />
-          <div className="mt-4 pt-4 border-t border-border/40">
-            <AnketButon topicSlug={slug} />
-          </div>
-        </>
+        <EntryForm topicSlug={slug} />
       )}
     </div>
   );

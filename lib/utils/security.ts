@@ -45,9 +45,19 @@ export function removeYasakliKelime(kelime: string): void {
 export function checkYasakliKelime(text: string): string | null {
   const lower = text.toLowerCase();
   for (const kelime of yasakliKelimeler) {
-    if (lower.includes(kelime)) {
-      return kelime;
+    // kelime sınırı kontrolü — "apo" yasak ama "apolitik" serbest
+    // boşluk içeren kelimeler (ör: "abdullah öcalan") doğrudan includes ile kontrol
+    if (kelime.includes(" ")) {
+      if (lower.includes(kelime)) return kelime;
+    } else {
+      // tek kelime: kelime sınırlarıyla kontrol et
+      const regex = new RegExp(`(^|[\\s.,;:!?'"()\\-])${escapeRegex(kelime)}($|[\\s.,;:!?'"()\\-])`, "i");
+      if (regex.test(lower)) return kelime;
     }
   }
   return null;
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -47,10 +47,10 @@ export function parseEntryContent(content: string): string {
     (_, text) => placeholder(`<span class="spoiler" onclick="this.classList.toggle('revealed')">${text}</span>`)
   );
 
-  // [görsel: url] veya [gorsel: url] → resim
+  // [görsel: url] veya [gorsel: url] → clickable thumbnail that expands/collapses
   result = result.replace(
     /\[g[oö]rsel:\s*(https?:\/\/[^\]\s]+)\]/g,
-    (_, url) => placeholder(`<img src="${url}" alt="görsel" class="max-w-full rounded-md my-2" loading="lazy" />`)
+    (_, url) => placeholder(`<div class="gorsel-wrapper"><a href="javascript:void(0)" class="text-primary text-xs hover:underline" onclick="this.nextElementSibling.classList.toggle('hidden')">[görsel]</a><img src="${url}" alt="görsel" class="hidden max-w-full rounded-md my-2" loading="lazy" /></div>`)
   );
 
   // [metin](url) → markdown tarzı link

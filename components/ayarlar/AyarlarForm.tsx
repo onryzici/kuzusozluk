@@ -77,21 +77,6 @@ export default function AyarlarForm({
         <h2 className="text-sm font-medium text-foreground">profil bilgileri</h2>
 
         <div className="space-y-1.5">
-          <label htmlFor="displayName" className="text-xs text-muted-foreground">
-            görünen ad
-          </label>
-          <Input
-            id="displayName"
-            placeholder="görünen adınız"
-            className="text-sm"
-            {...register("displayName")}
-          />
-          {errors.displayName && (
-            <p className="text-xs text-destructive">{errors.displayName.message}</p>
-          )}
-        </div>
-
-        <div className="space-y-1.5">
           <label htmlFor="bio" className="text-xs text-muted-foreground">
             biyografi
           </label>

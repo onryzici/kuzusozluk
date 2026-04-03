@@ -41,7 +41,7 @@ export default function AramaKutusu() {
   const showNoResult = open && !isLoading && query.trim().length >= 2 && sonuclar.length === 0;
 
   return (
-    <div ref={ref} className="relative w-full max-w-md">
+    <div ref={ref} className="relative w-full sm:max-w-md">
       <form onSubmit={handleSubmit}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

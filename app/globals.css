@@ -157,6 +157,11 @@
   color: var(--foreground);
 }
 
+/* Görsel toggle wrapper */
+.entry-content .gorsel-wrapper {
+  display: inline;
+}
+
 /* Scrollbar — main area */
 main::-webkit-scrollbar {
   width: 8px;

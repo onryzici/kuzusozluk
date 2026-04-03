@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { LogIn, LogOut, User, Menu, Settings, Mail, Shield, PenLine, BarChart3, HelpCircle } from "lucide-react";
+import { LogIn, LogOut, User, Settings, Mail, Shield, PenLine, BarChart3, HelpCircle } from "lucide-react";
 import AramaKutusu from "@/components/shared/AramaKutusu";
 import MesajBildirim from "@/components/shared/MesajBildirim";
 import BildirimMenusu from "@/components/shared/BildirimMenusu";
@@ -13,35 +13,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useUIStore } from "@/store/uiStore";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 
 export default function Header() {
   const { data: session } = useSession();
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       {/* üst bar */}
-      <div className="max-w-[1200px] mx-auto flex items-center gap-3 h-11 px-4">
-        <button onClick={toggleSidebar} className="lg:hidden p-1.5 -ml-1 rounded hover:bg-accent">
-          <Menu className="h-4 w-4" />
-        </button>
-
-        <Link href="/" className="flex items-center gap-1.5 shrink-0 mr-2">
+      <div className="max-w-[1200px] mx-auto flex items-center gap-2 sm:gap-3 h-11 px-3 sm:px-4">
+        <Link href="/" className="flex items-center gap-1.5 shrink-0 mr-1 sm:mr-2">
           <span className="text-lg">🐑</span>
-          <span className="font-bold text-sm tracking-tight">
+          <span className="font-bold text-sm tracking-tight hidden sm:inline">
             <span className="text-primary">kuzu</span>
             <span className="text-foreground">sözlük</span>
           </span>
         </Link>
 
-        <div className="flex-1 max-w-md">
+        <div className="flex-1 min-w-0">
           <AramaKutusu />
         </div>
 
         <div className="shrink-0 flex items-center gap-1 ml-auto">
-          <OnlineKullanicilar />
+          <div className="hidden sm:flex">
+            <OnlineKullanicilar />
+          </div>
           {session?.user ? (
             <>
               <BildirimMenusu />
@@ -113,7 +109,7 @@ export default function Header() {
 
       {/* alt navigasyon */}
       <div className="border-t border-border">
-        <div className="max-w-[1200px] mx-auto px-4 flex items-center gap-4 h-9 overflow-x-auto scrollbar-none">
+        <div className="max-w-[1200px] mx-auto px-3 sm:px-4 flex items-center gap-3 sm:gap-4 h-9 overflow-x-auto scrollbar-none">
           {[
             { href: "/", label: "bugün" },
             { href: "/gundem", label: "gündem" },

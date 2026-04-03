@@ -183,8 +183,8 @@ export default function EntryKart({
         />
       )}
 
-      <div className="flex items-center justify-between mt-3">
-        <div className="flex items-center gap-0.5">
+      <div className="flex items-center justify-between mt-3 flex-wrap gap-y-2">
+        <div className="flex items-center gap-0.5 flex-wrap">
           <OyButonlari
             entryId={id}
             initialUpvotes={upvotes}
@@ -266,8 +266,8 @@ export default function EntryKart({
         </div>
 
         {/* yazar */}
-        <div className="flex items-center gap-2">
-          <div className="text-right">
+        <div className="flex items-center gap-2 min-w-0 shrink-0 max-w-[50%] sm:max-w-none">
+          <div className="text-right min-w-0">
             <span className="flex items-center gap-1">
               <Link
                 href={`/kullanici/${authorUsername}`}

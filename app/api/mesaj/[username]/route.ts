@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { decryptMessage } from "@/lib/utils/encryption";
 
-// GET /api/mesaj/[username] — Get conversation with a specific user
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ username: string }> }
@@ -10,7 +10,7 @@ export async function GET(
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json(
-      { success: false, error: { code: "UNAUTHORIZED", message: "Giriş yapmalısınız" } },
+      { success: false, error: { code: "UNAUTHORIZED", message: "giriş yapmalısınız" } },
       { status: 401 }
     );
   }
@@ -25,7 +25,7 @@ export async function GET(
 
   if (!otherUser) {
     return NextResponse.json(
-      { success: false, error: { code: "USER_NOT_FOUND", message: "Kullanıcı bulunamadı" } },
+      { success: false, error: { code: "USER_NOT_FOUND", message: "kullanıcı bulunamadı" } },
       { status: 404 }
     );
   }
@@ -45,7 +45,13 @@ export async function GET(
     },
   });
 
-  // Mark unread messages from the other user as read
+  // mesajları decrypt et
+  const decryptedMessages = messages.map((msg) => ({
+    ...msg,
+    content: decryptMessage(msg.content, msg.senderId, msg.receiverId),
+  }));
+
+  // okunmamışları okundu yap
   await prisma.message.updateMany({
     where: {
       senderId: otherUser.id,
@@ -59,7 +65,7 @@ export async function GET(
     success: true,
     data: {
       otherUser,
-      messages,
+      messages: decryptedMessages,
     },
   });
 }

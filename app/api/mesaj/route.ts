@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { mesajSchema } from "@/lib/validations/mesaj";
 import { createNotification } from "@/lib/notifications";
 import { checkYasakliKelime } from "@/lib/utils/security";
+import { encryptMessage, decryptMessage } from "@/lib/utils/encryption";
 
 // GET /api/mesaj — List conversations for current user (grouped by other user)
 export async function GET() {
@@ -68,7 +69,7 @@ export async function GET() {
       conversationMap.set(otherUserId, {
         username: otherUsername,
         avatarUrl: otherAvatarUrl,
-        lastMessage: msg.content,
+        lastMessage: decryptMessage(msg.content, msg.senderId, msg.receiverId),
         lastMessageAt: msg.createdAt,
         isOwnMessage: isOwn,
         unreadCount: 0,
@@ -141,9 +142,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const encryptedContent = encryptMessage(content, senderId, receiver.id);
+
   const mesaj = await prisma.message.create({
     data: {
-      content,
+      content: encryptedContent,
       senderId,
       receiverId: receiver.id,
     },

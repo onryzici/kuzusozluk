@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import MesajListesi from "@/components/mesaj/MesajListesi";
-import Link from "next/link";
 import { Mail } from "lucide-react";
 
 export const metadata = {
@@ -90,12 +89,7 @@ export default async function MesajlarPage() {
           <Mail className="h-5 w-5" />
           Mesajlar
         </h1>
-        <Link
-          href="/mesajlar/yeni"
-          className="text-sm text-primary hover:underline"
-        >
-          {/* Placeholder for future "new message" feature */}
-        </Link>
+        {/* yeni mesaj özelliği eklendiğinde buraya buton gelecek */}
       </div>
       <div className="border rounded-lg bg-card">
         <MesajListesi conversations={conversations} />

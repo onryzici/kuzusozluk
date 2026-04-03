@@ -47,18 +47,28 @@ export default async function DebeSayfa() {
       <div className="flex items-center gap-2 mb-4">
         <Trophy className="h-4 w-4 text-yellow-500" />
         <h1 className="text-base font-medium text-foreground">
-          dünün en beğenilen entryleri
+          {period === "bugün" ? "bugünün en beğenilen entryleri" : "son 7 günün en beğenilen entryleri"}
         </h1>
       </div>
 
       <p className="text-xs text-muted-foreground mb-6">
-        {period} en çok beğenilen entryler
+        {period === "bugün" ? "bugün" : "son 7 günde"} en çok beğenilen entryler
       </p>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-16">
-          henüz beğenilen entry yok.
-        </p>
+        <div className="text-center py-16 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            henüz beğenilen entry yok.
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <Link href="/" className="text-xs text-primary hover:underline">
+              gündem
+            </Link>
+            <Link href="/baslik/yeni" className="text-xs text-primary hover:underline">
+              başlık aç
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="space-y-1">
           {entries.map((entry, index) => (

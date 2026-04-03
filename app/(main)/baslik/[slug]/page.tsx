@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import BaslikDetay from "@/components/baslik/BaslikDetay";
 import BaslikTakipButon from "@/components/baslik/BaslikTakipButon";
 import EntryKart from "@/components/entry/EntryKart";
@@ -138,6 +140,9 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
+      <Link href="/" className="lg:hidden flex items-center gap-1 text-xs text-muted-foreground mb-3 hover:text-foreground">
+        <ArrowLeft className="h-3 w-3" /> başlıklar
+      </Link>
       <div className="flex items-start justify-between gap-4 mb-6">
         <BaslikDetay
           title={topic.title}

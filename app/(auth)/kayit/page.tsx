@@ -9,6 +9,7 @@ import { kayitSchema, type KayitInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle2 } from "lucide-react";
 
 export default function KayitSayfa() {
   const router = useRouter();
@@ -47,8 +48,12 @@ export default function KayitSayfa() {
         </CardHeader>
         <CardContent>
           {aktivasyonMesaji ? (
-            <div className="text-center space-y-4">
-              <p className="text-green-600 dark:text-green-400">{aktivasyonMesaji}</p>
+            <div className="text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-base font-medium">kayıt başarılı</h3>
+              <p className="text-sm text-green-600 dark:text-green-400">{aktivasyonMesaji}</p>
               <Link href="/giris" className="inline-flex items-center justify-center w-full h-9 px-4 rounded-md border border-border text-sm font-medium hover:bg-accent transition-colors">
                 giriş sayfasına dön
               </Link>

@@ -9,7 +9,7 @@ type BaslikDetayProps = {
 export default function BaslikDetay({ title, entryCount, createdAt }: BaslikDetayProps) {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-primary">{title}</h1>
+      <h1 className="text-lg sm:text-2xl font-bold text-primary break-words">{title}</h1>
       <p className="text-sm text-muted-foreground mt-1">
         {entryCount} entry &middot; {formatTarih(createdAt)}
       </p>

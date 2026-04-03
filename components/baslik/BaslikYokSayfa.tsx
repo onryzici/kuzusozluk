@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
+import { toast } from "sonner";
 
 type Suggestion = {
   title: string;
@@ -76,6 +77,7 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
         return;
       }
 
+      toast.success("başlık oluşturuldu");
       window.dispatchEvent(new Event("sidebar:refresh"));
       router.push(`/baslik/${actualSlug}`);
       router.refresh();

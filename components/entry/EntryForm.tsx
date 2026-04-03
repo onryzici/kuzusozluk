@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
+import { toast } from "sonner";
 
 type EntryFormProps = {
   topicSlug: string;
@@ -46,6 +47,7 @@ export default function EntryForm({ topicSlug }: EntryFormProps) {
         setError(json.error.message);
       } else {
         setContent("");
+        toast.success("entry gönderildi");
         router.refresh();
         window.dispatchEvent(new Event("sidebar:refresh"));
       }

@@ -64,7 +64,8 @@ export default async function MesajDetayPage({
       <div className="flex items-center gap-3 p-4 border-b">
         <Link
           href="/mesajlar"
-          className="p-1 rounded-md hover:bg-muted transition-colors"
+          className="p-2 -ml-1 rounded-md hover:bg-muted transition-colors"
+          aria-label="mesajlara dön"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>

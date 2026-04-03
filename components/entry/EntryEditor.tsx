@@ -332,7 +332,7 @@ export default function EntryEditor({
   return (
     <div className="space-y-0">
       {/* toolbar */}
-      <div className="flex items-center gap-0.5 border border-b-0 rounded-t-md px-1.5 py-1 bg-muted/30">
+      <div className="flex items-center gap-0.5 border border-b-0 rounded-t-md px-1.5 py-1 bg-muted/30 overflow-x-auto scrollbar-none flex-nowrap">
         {toolbarButtons.map((btn, idx) => {
           if ("divider" in btn && btn.divider) {
             return (

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { formatTarih } from "@/lib/utils/format";
 import { parseEntryContent } from "@/lib/utils/entryParser";
@@ -43,6 +44,7 @@ export default function EntryKart({
   authorId,
   currentUserRole,
 }: EntryKartProps) {
+  const router = useRouter();
   const isOwner = !!(currentUserId && authorId && currentUserId === authorId);
   const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "MODERATOR";
   const canDelete = isOwner || isAdmin;
@@ -139,6 +141,7 @@ export default function EntryKart({
       if (json.success) {
         setDeleted(true);
         window.dispatchEvent(new Event("sidebar:refresh"));
+        router.refresh();
       } else {
         toast.error(json.error?.message || "silinemedi");
       }

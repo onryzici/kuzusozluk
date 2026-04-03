@@ -42,18 +42,16 @@ export async function GET(request: NextRequest) {
         dayCount: true,
         isPinned: true,
         createdAt: true,
-        _count: { select: { entries: true } },
       },
     }),
     prisma.topic.count(),
   ]);
 
-  // gerçek entry sayısını _count'tan al
   const data = topics.map((t) => ({
     id: t.id,
     title: t.title,
     slug: t.slug,
-    entryCount: t._count.entries,
+    entryCount: t.entryCount,
     dayCount: t.dayCount,
     isPinned: t.isPinned,
     createdAt: t.createdAt,

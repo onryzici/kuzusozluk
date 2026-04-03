@@ -32,7 +32,9 @@ export default function Sidebar() {
 
   useEffect(() => {
     fetchGundem();
-  }, [fetchGundem, pathname]);
+    // only fetch on initial mount, not on every pathname change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     function handleRefresh() { fetchGundem(); }

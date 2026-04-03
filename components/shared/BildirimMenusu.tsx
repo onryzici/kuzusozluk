@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Bell, AtSign, MessageSquare, ThumbsUp, UserPlus, Mail } from "lucide-react";
 import { formatZamanOnce } from "@/lib/utils/format";
+import { usePolling } from "@/hooks/usePolling";
 
 type Notification = {
   id: string;
@@ -29,22 +30,9 @@ const typeIcons: Record<string, typeof Bell> = {
 };
 
 export default function BildirimMenusu() {
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadNotif, clearNotifCount } = usePolling();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    async function fetchCount() {
-      try {
-        const res = await fetch("/api/bildirim/okunmamis");
-        const data = await res.json();
-        if (data.success) setUnreadCount(data.data.count);
-      } catch {}
-    }
-    fetchCount();
-    const interval = setInterval(fetchCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const openDropdown = useCallback(async () => {
     setIsOpen(true);
@@ -53,7 +41,6 @@ export default function BildirimMenusu() {
       const data = await res.json();
       if (data.success) {
         setNotifications(data.data.notifications);
-        setUnreadCount(data.data.unreadCount);
       }
     } catch {}
 
@@ -64,10 +51,10 @@ export default function BildirimMenusu() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ markAllRead: true }),
       });
-      setUnreadCount(0);
+      clearNotifCount();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {}
-  }, []);
+  }, [clearNotifCount]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -88,9 +75,9 @@ export default function BildirimMenusu() {
         className="relative inline-flex items-center justify-center p-1.5 rounded hover:bg-accent transition-colors"
       >
         <Bell className="h-4 w-4" />
-        {unreadCount > 0 && (
+        {unreadNotif > 0 && (
           <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center h-3.5 min-w-[14px] px-0.5 rounded-full bg-primary/80 text-[9px] font-medium text-primary-foreground">
-            {unreadCount > 9 ? "9+" : unreadCount}
+            {unreadNotif > 9 ? "9+" : unreadNotif}
           </span>
         )}
       </button>
@@ -103,7 +90,7 @@ export default function BildirimMenusu() {
 
           {notifications.length === 0 ? (
             <div className="px-3 py-8 text-center text-xs text-muted-foreground">
-              henüz bildirim yok
+              henuz bildirim yok
             </div>
           ) : (
             <div>
@@ -154,7 +141,7 @@ export default function BildirimMenusu() {
               onClick={() => setIsOpen(false)}
               className="text-[11px] text-primary hover:underline"
             >
-              tüm bildirimleri gör
+              tum bildirimleri gor
             </Link>
           </div>
         </div>

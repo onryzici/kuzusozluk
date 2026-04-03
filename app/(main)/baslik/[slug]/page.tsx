@@ -20,21 +20,24 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  // Single query: fetch topic with first entry in one go
   const topic = await prisma.topic.findUnique({
     where: { slug },
-    select: { title: true, id: true },
+    select: {
+      title: true,
+      entries: {
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { content: true },
+      },
+    },
   });
 
   if (!topic) {
     return { title: "baslik bulunamadi" };
   }
 
-  const firstEntry = await prisma.entry.findFirst({
-    where: { topicId: topic.id },
-    orderBy: { createdAt: "asc" },
-    select: { content: true },
-  });
-
+  const firstEntry = topic.entries[0];
   const description = firstEntry
     ? firstEntry.content.slice(0, 160).replace(/\n/g, " ")
     : `${topic.title} hakkinda entryler`;
@@ -55,6 +58,14 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
 
   const topic = await prisma.topic.findUnique({
     where: { slug },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      isLocked: true,
+      isPinned: true,
+      createdAt: true,
+    },
   });
 
   // Başlık yoksa — Ekşi tarzı "bu başlık yok" sayfası

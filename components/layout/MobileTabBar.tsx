@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect, useState, useCallback } from "react";
 import { Home, Search, MessageSquare, Bell, User } from "lucide-react";
+import { usePolling } from "@/hooks/usePolling";
 
 type TabItem = {
   key: string;
@@ -17,28 +17,7 @@ type TabItem = {
 export default function MobileTabBar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [unreadNotif, setUnreadNotif] = useState(0);
-  const [unreadMsg, setUnreadMsg] = useState(0);
-
-  const fetchCounts = useCallback(async () => {
-    if (!session?.user) return;
-    try {
-      const [notifRes, msgRes] = await Promise.all([
-        fetch("/api/bildirim/okunmamis"),
-        fetch("/api/mesaj/okunmamis"),
-      ]);
-      const notifData = await notifRes.json();
-      const msgData = await msgRes.json();
-      if (notifData.success) setUnreadNotif(notifData.data.count);
-      if (msgData.success) setUnreadMsg(msgData.data.count);
-    } catch {}
-  }, [session?.user]);
-
-  useEffect(() => {
-    fetchCounts();
-    const interval = setInterval(fetchCounts, 30000);
-    return () => clearInterval(interval);
-  }, [fetchCounts]);
+  const { unreadNotif, unreadMsg } = usePolling();
 
   const profileHref = session?.user
     ? `/kullanici/${(session.user as any).username}`

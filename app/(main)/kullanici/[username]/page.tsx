@@ -37,23 +37,78 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
 
   if (!user) notFound();
 
+  const userId = user.id;
+  const isSelf = session?.user?.username === username;
+
+  // Build tab content query based on active tab
+  function getTabQuery() {
+    if (sekme === "entryler") {
+      return prisma.entry.findMany({
+        where: { authorId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          author: { select: { id: true, username: true, avatarUrl: true } },
+          topic: { select: { title: true, slug: true } },
+          _count: { select: { comments: true } },
+        },
+      });
+    } else if (sekme === "takip") {
+      return prisma.follow.findMany({
+        where: { followerId: userId },
+        include: {
+          following: {
+            select: { username: true, displayName: true, avatarUrl: true, entryCount: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    } else if (sekme === "favoriler") {
+      return prisma.favorite.findMany({
+        where: { userId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          entry: {
+            include: {
+              author: { select: { id: true, username: true, avatarUrl: true } },
+              topic: { select: { title: true, slug: true } },
+              _count: { select: { comments: true } },
+            },
+          },
+        },
+      });
+    }
+    return Promise.resolve(null);
+  }
+
+  // Run follow check and tab content in parallel
+  const followCheckPromise = (session?.user && !isSelf)
+    ? prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: session.user.id,
+            followingId: user.id,
+          },
+        },
+      })
+    : Promise.resolve(null);
+
+  const [tabData, followRecord] = await Promise.all([
+    getTabQuery(),
+    followCheckPromise,
+  ]);
+
+  const isFollowing = !!followRecord;
+
+  // Render tab content from parallel-fetched data
   let content: React.ReactNode = null;
 
   if (sekme === "entryler") {
-    const entries = await prisma.entry.findMany({
-      where: { authorId: user.id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      include: {
-        author: { select: { id: true, username: true, avatarUrl: true } },
-        topic: { select: { title: true, slug: true } },
-        _count: { select: { comments: true } },
-      },
-    });
-
-    content = entries.length > 0 ? (
+    const entries = tabData as any[];
+    content = entries && entries.length > 0 ? (
       <div className="divide-y divide-border/60">
-        {entries.map((e, idx) => (
+        {entries.map((e: any, idx: number) => (
           <div key={e.id}>
             <Link href={`/baslik/${e.topic.slug}`} className="text-xs text-primary hover:underline font-medium inline-block pt-3">
               {e.topic.title}
@@ -74,22 +129,13 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
         ))}
       </div>
     ) : (
-      <p className="text-muted-foreground text-center py-12 text-sm">henüz entry yok.</p>
+      <p className="text-muted-foreground text-center py-12 text-sm">henuz entry yok.</p>
     );
   } else if (sekme === "takip") {
-    const followingList = await prisma.follow.findMany({
-      where: { followerId: user.id },
-      include: {
-        following: {
-          select: { username: true, displayName: true, avatarUrl: true, entryCount: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    content = followingList.length > 0 ? (
+    const followingList = tabData as any[];
+    content = followingList && followingList.length > 0 ? (
       <div className="space-y-1">
-        {followingList.map((f) => (
+        {followingList.map((f: any) => (
           <div key={f.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-accent/60 transition-colors">
             <Link href={`/kullanici/${f.following.username}`} className="flex items-center gap-2.5">
               <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
@@ -108,28 +154,14 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
       </div>
     ) : (
       <p className="text-muted-foreground text-center py-12 text-sm">
-        henüz kimseyi takip etmiyor.
+        henuz kimseyi takip etmiyor.
       </p>
     );
   } else if (sekme === "favoriler") {
-    const favorites = await prisma.favorite.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      include: {
-        entry: {
-          include: {
-            author: { select: { id: true, username: true, avatarUrl: true } },
-            topic: { select: { title: true, slug: true } },
-            _count: { select: { comments: true } },
-          },
-        },
-      },
-    });
-
-    content = favorites.length > 0 ? (
+    const favorites = tabData as any[];
+    content = favorites && favorites.length > 0 ? (
       <div className="divide-y divide-border/60">
-        {favorites.map((f, idx) => (
+        {favorites.map((f: any, idx: number) => (
           <div key={f.id}>
             <Link href={`/baslik/${f.entry.topic.slug}`} className="text-xs text-primary hover:underline font-medium inline-block pt-3">
               {f.entry.topic.title}
@@ -150,24 +182,8 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
         ))}
       </div>
     ) : (
-      <p className="text-muted-foreground text-center py-12 text-sm">henüz favori yok.</p>
+      <p className="text-muted-foreground text-center py-12 text-sm">henuz favori yok.</p>
     );
-  }
-
-  const isSelf = session?.user?.username === username;
-
-  // Check if current user follows this profile
-  let isFollowing = false;
-  if (session?.user && !isSelf) {
-    const follow = await prisma.follow.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId: session.user.id,
-          followingId: user.id,
-        },
-      },
-    });
-    isFollowing = !!follow;
   }
 
   return (

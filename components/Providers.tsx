@@ -7,10 +7,20 @@ import { useState } from "react";
 import { useOnlinePing } from "@/hooks/useOnlinePing";
 import { Toaster } from "sonner";
 import ThemeColorInit from "@/components/shared/ThemeColorInit";
+import { PollingContext, usePollingProvider } from "@/hooks/usePolling";
 
 function OnlinePingProvider({ children }: { children: React.ReactNode }) {
   useOnlinePing();
   return <>{children}</>;
+}
+
+function PollingProvider({ children }: { children: React.ReactNode }) {
+  const polling = usePollingProvider();
+  return (
+    <PollingContext.Provider value={polling}>
+      {children}
+    </PollingContext.Provider>
+  );
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -27,9 +37,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           forcedTheme={undefined}
         >
           <OnlinePingProvider>
-            <ThemeColorInit />
-            {children}
-            <Toaster position="bottom-right" theme="dark" />
+            <PollingProvider>
+              <ThemeColorInit />
+              {children}
+              <Toaster position="bottom-right" theme="dark" />
+            </PollingProvider>
           </OnlinePingProvider>
         </ThemeProvider>
       </QueryClientProvider>

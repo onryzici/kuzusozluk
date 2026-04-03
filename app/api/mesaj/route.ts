@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { content, receiverUsername } = parsed.data;
+  const content = parsed.data.content.toLowerCase();
+  const receiverUsername = parsed.data.receiverUsername;
   const senderId = (session.user as { id: string }).id;
   const senderUsername = (session.user as { username: string }).username;
 

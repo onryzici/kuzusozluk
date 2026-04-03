@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useOnlinePing } from "@/hooks/useOnlinePing";
 import { Toaster } from "sonner";
+import ThemeColorInit from "@/components/shared/ThemeColorInit";
 
 function OnlinePingProvider({ children }: { children: React.ReactNode }) {
   useOnlinePing();
@@ -26,6 +27,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           forcedTheme={undefined}
         >
           <OnlinePingProvider>
+            <ThemeColorInit />
             {children}
             <Toaster position="bottom-right" theme="dark" />
           </OnlinePingProvider>

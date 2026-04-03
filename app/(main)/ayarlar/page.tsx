@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import AyarlarForm from "@/components/ayarlar/AyarlarForm";
 import AvatarYukle from "@/components/kullanici/AvatarYukle";
 import HesapSil from "@/components/ayarlar/HesapSil";
+import TemaSec from "@/components/ayarlar/TemaSec";
 
 export default async function AyarlarSayfa() {
   const session = await auth();
@@ -45,6 +46,8 @@ export default async function AyarlarSayfa() {
         initialDisplayName={user.displayName || ""}
         initialBio={user.bio || ""}
       />
+
+      <TemaSec />
 
       {isAdmin && (
         <div className="mt-10">

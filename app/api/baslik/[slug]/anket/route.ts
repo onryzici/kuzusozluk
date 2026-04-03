@@ -120,6 +120,15 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
+  // her başlıkta max 1 anket
+  const existingPoll = await prisma.poll.findFirst({ where: { topicId: topic.id } });
+  if (existingPoll) {
+    return NextResponse.json(
+      { success: false, error: { code: "POLL_EXISTS", message: "bu başlıkta zaten bir anket var" } },
+      { status: 409 }
+    );
+  }
+
   const { question, options } = parsed.data;
   const userId = (session.user as any).id;
 

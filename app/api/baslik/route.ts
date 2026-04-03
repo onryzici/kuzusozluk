@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
   const yasakli = checkYasakliKelime(title + " " + (description || ""));
   if (yasakli) {
     return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN_CONTENT", message: "yasaklı içerik tespit edildi" } },
+      { success: false, error: { code: "FORBIDDEN_CONTENT", message: `yasaklı içerik: "${yasakli}"` } },
       { status: 403 }
     );
   }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
+import { BarChart3, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 type Suggestion = {
@@ -25,6 +26,11 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // anket
+  const [anketOpen, setAnketOpen] = useState(false);
+  const [anketSoru, setAnketSoru] = useState("");
+  const [anketSecenekler, setAnketSecenekler] = useState(["", ""]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,6 +81,20 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
       if (!entryJson.success) {
         setError(entryJson.error.message);
         return;
+      }
+
+      // anket varsa oluştur
+      if (anketOpen && anketSoru.trim() && anketSecenekler.filter(s => s.trim()).length >= 2) {
+        try {
+          await fetch(`/api/baslik/${actualSlug}/anket`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: anketSoru.trim().toLowerCase(),
+              options: anketSecenekler.filter(s => s.trim()).map(s => s.toLowerCase()),
+            }),
+          });
+        } catch {}
       }
 
       toast.success("başlık oluşturuldu");
@@ -132,6 +152,62 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
               maxLength={5000}
               disabled={isSubmitting}
             />
+
+            {/* anket ekleme */}
+            <div className="border border-border/50 rounded-md p-3">
+              {!anketOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setAnketOpen(true)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <BarChart3 className="h-3.5 w-3.5" /> anket ekle (isteğe bağlı)
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">anket</span>
+                    <button type="button" onClick={() => setAnketOpen(false)} className="text-muted-foreground hover:text-foreground">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <input
+                    value={anketSoru}
+                    onChange={(e) => setAnketSoru(e.target.value)}
+                    placeholder="soru..."
+                    className="w-full text-sm px-2 py-1.5 border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  {anketSecenekler.map((s, i) => (
+                    <div key={i} className="flex gap-1">
+                      <input
+                        value={s}
+                        onChange={(e) => {
+                          const yeni = [...anketSecenekler];
+                          yeni[i] = e.target.value;
+                          setAnketSecenekler(yeni);
+                        }}
+                        placeholder={`seçenek ${i + 1}`}
+                        className="flex-1 text-sm px-2 py-1 border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      {anketSecenekler.length > 2 && (
+                        <button type="button" onClick={() => setAnketSecenekler(anketSecenekler.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive px-1">
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {anketSecenekler.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={() => setAnketSecenekler([...anketSecenekler, ""])}
+                      className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"
+                    >
+                      <Plus className="h-3 w-3" /> seçenek ekle
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center justify-end">
               <Button type="submit" disabled={isSubmitting}>

@@ -54,7 +54,7 @@ export default function Sidebar() {
           </button>
         </div>
 
-        <nav>
+        <nav className="divide-y divide-border/20">
           {/* sabitlenmiş başlıklar önce, sonra geri kalanlar */}
           {[...gundem].sort((a, b) => {
             if (a.isPinned && !b.isPinned) return -1;

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { LogIn, LogOut, User, Settings, Mail, Shield, PenLine, BarChart3, HelpCircle } from "lucide-react";
 import AramaKutusu from "@/components/shared/AramaKutusu";
@@ -15,16 +16,30 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 
+const navLinks = [
+  { href: "/", label: "bugün" },
+  { href: "/gundem", label: "gündem" },
+  { href: "/debe", label: "debe" },
+  { href: "/takip", label: "takip" },
+  { href: "/son", label: "son" },
+];
+
+const desktopOnlyLinks = [
+  { href: "/duyurular", label: "duyurular" },
+  { href: "/rastgele", label: "rastgele" },
+];
+
 export default function Header() {
   const { data: session } = useSession();
+  const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
-      {/* üst bar */}
-      <div className="max-w-[1200px] mx-auto flex items-center gap-2 sm:gap-3 h-11 px-3 sm:px-4">
+      {/* üst bar — hidden on mobile */}
+      <div className="hidden sm:flex max-w-[1200px] mx-auto items-center gap-2 sm:gap-3 h-11 px-3 sm:px-4">
         <Link href="/" className="flex items-center gap-1.5 shrink-0 mr-1 sm:mr-2">
-          <span className="text-lg">🐑</span>
-          <span className="font-bold text-sm tracking-tight hidden sm:inline">
+          <span className="text-lg">&#x1F411;</span>
+          <span className="font-bold text-sm tracking-tight">
             <span className="text-primary">kuzu</span>
             <span className="text-foreground">sözlük</span>
           </span>
@@ -35,9 +50,7 @@ export default function Header() {
         </div>
 
         <div className="shrink-0 flex items-center gap-1 ml-auto">
-          <div className="hidden sm:flex">
-            <OnlineKullanicilar />
-          </div>
+          <OnlineKullanicilar />
           {session?.user ? (
             <>
               <BildirimMenusu />
@@ -45,11 +58,11 @@ export default function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded hover:bg-accent transition-colors">
                   <User className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline text-[13px]">{session.user.username}</span>
+                  <span className="text-[13px]">{(session.user as any).username}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem>
-                    <Link href={`/kullanici/${session.user.username}`} className="flex items-center gap-2 w-full text-xs">
+                    <Link href={`/kullanici/${(session.user as any).username}`} className="flex items-center gap-2 w-full text-xs">
                       <User className="h-3 w-3" /> profilim
                     </Link>
                   </DropdownMenuItem>
@@ -99,7 +112,7 @@ export default function Header() {
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded hover:bg-accent transition-colors"
               >
                 <LogIn className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">giriş</span>
+                <span>giriş</span>
               </Link>
               <ThemeToggle />
             </>
@@ -107,22 +120,41 @@ export default function Header() {
         </div>
       </div>
 
-      {/* alt navigasyon */}
-      <div className="border-t border-border">
-        <div className="max-w-[1200px] mx-auto px-3 sm:px-4 flex items-center gap-3 sm:gap-4 h-9 overflow-x-auto scrollbar-none">
-          {[
-            { href: "/", label: "bugün" },
-            { href: "/gundem", label: "gündem" },
-            { href: "/debe", label: "debe" },
-            { href: "/takip", label: "takip" },
-            { href: "/son", label: "son" },
-            { href: "/duyurular", label: "duyurular" },
-            { href: "/rastgele", label: "rastgele" },
-          ].map((link) => (
+      {/* alt navigasyon — tabs */}
+      <div className="border-t border-border sm:border-t">
+        <div className="max-w-[1200px] mx-auto px-3 sm:px-4 flex items-center gap-0 sm:gap-4 h-10 sm:h-9 overflow-x-auto scrollbar-none">
+          {/* mobile: larger tabs with underline active state */}
+          {navLinks.map((link) => {
+            const isActive =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname === link.href || pathname?.startsWith(link.href + "/");
+
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`relative text-sm sm:text-[13px] whitespace-nowrap transition-colors px-3 sm:px-0 py-2 sm:py-0 ${
+                  isActive
+                    ? "text-foreground font-semibold sm:font-normal sm:text-primary"
+                    : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                {link.label}
+                {/* mobile active underline */}
+                {isActive && (
+                  <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-primary rounded-full sm:hidden" />
+                )}
+              </Link>
+            );
+          })}
+
+          {/* desktop-only links */}
+          {desktopOnlyLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-[13px] text-muted-foreground hover:text-primary whitespace-nowrap transition-colors"
+              className="hidden sm:inline-block text-[13px] text-muted-foreground hover:text-primary whitespace-nowrap transition-colors"
             >
               {link.label}
             </Link>

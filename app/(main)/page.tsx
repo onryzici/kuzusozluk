@@ -31,23 +31,20 @@ export default async function AnaSayfa() {
       {firstSlug && <DesktopRedirect slug={firstSlug} />}
 
       {/* mobilde başlık listesi */}
-      <div className="px-3 py-3 lg:hidden">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-muted-foreground">bugün</span>
-        </div>
-        <div className="space-y-px">
+      <div className="lg:hidden pb-16">
+        <div className="divide-y divide-border/30">
           {sorted.map((t) => (
             <Link
               key={t.id}
               href={`/baslik/${t.slug}`}
-              className="flex items-center justify-between py-2.5 px-2 rounded hover:bg-accent/60 transition-colors"
+              className="flex items-center justify-between py-3 px-4 hover:bg-accent/60 active:bg-accent/80 transition-colors"
             >
-              <span className={`text-sm text-foreground/85 ${t.isPinned ? "font-bold" : ""}`}>
+              <span className={`text-sm text-foreground/85 leading-snug ${t.isPinned ? "font-bold" : ""}`}>
                 {t.isPinned && <span className="text-primary mr-1">&bull;</span>}
                 {t.title}
               </span>
               {t._count.entries > 0 && (
-                <span className="text-xs text-muted-foreground tabular-nums shrink-0 ml-2">
+                <span className="text-xs text-muted-foreground tabular-nums shrink-0 ml-3">
                   {t._count.entries}
                 </span>
               )}

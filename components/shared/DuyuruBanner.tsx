@@ -47,25 +47,27 @@ export default function DuyuruBanner() {
   if (!announcement || dismissed) return null;
 
   return (
-    <div className="bg-primary text-primary-foreground px-4 py-2.5 flex items-center gap-3">
-      <Megaphone className="h-4 w-4 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <Link href="/duyurular" className="hover:underline">
-          <span className="text-xs font-medium">{announcement.title}</span>
-          <span className="text-xs opacity-80 ml-2 hidden sm:inline">
-            {announcement.content.length > 100
-              ? announcement.content.slice(0, 100) + "..."
-              : announcement.content}
-          </span>
-        </Link>
+    <div className="w-full bg-primary text-primary-foreground">
+      <div className="max-w-[1200px] mx-auto px-4 py-2.5 flex items-center gap-3">
+        <Megaphone className="h-4 w-4 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <Link href="/duyurular" className="hover:underline">
+            <span className="text-xs font-medium">{announcement.title}</span>
+            <span className="text-xs opacity-80 ml-2 hidden sm:inline">
+              {announcement.content.length > 100
+                ? announcement.content.slice(0, 100) + "..."
+                : announcement.content}
+            </span>
+          </Link>
+        </div>
+        <button
+          onClick={handleDismiss}
+          className="p-1 rounded hover:bg-white/20 shrink-0"
+          aria-label="kapat"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
-      <button
-        onClick={handleDismiss}
-        className="p-1 rounded hover:bg-white/20 shrink-0"
-        aria-label="kapat"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }

@@ -96,17 +96,32 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     );
   }
 
-  await prisma.entry.delete({ where: { id } });
+  // ilişkili verileri temizle sonra entry'yi sil
+  try {
+    await prisma.$transaction([
+      prisma.vote.deleteMany({ where: { entryId: id } }),
+      prisma.favorite.deleteMany({ where: { entryId: id } }),
+      prisma.comment.deleteMany({ where: { entryId: id } }),
+      prisma.report.deleteMany({ where: { entryId: id } }),
+      prisma.entry.delete({ where: { id } }),
+    ]);
 
-  await prisma.topic.update({
-    where: { id: entry.topicId },
-    data: { entryCount: { decrement: 1 } },
-  });
+    await prisma.topic.update({
+      where: { id: entry.topicId },
+      data: { entryCount: { decrement: 1 } },
+    });
 
-  await prisma.user.update({
-    where: { id: entry.authorId },
-    data: { entryCount: { decrement: 1 } },
-  });
+    await prisma.user.update({
+      where: { id: entry.authorId },
+      data: { entryCount: { decrement: 1 } },
+    });
+  } catch (err) {
+    console.error("Entry delete error:", err);
+    return NextResponse.json(
+      { success: false, error: { code: "DELETE_ERROR", message: "entry silinemedi" } },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ success: true, data: { id } });
 }

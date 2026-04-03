@@ -22,6 +22,7 @@ export default async function EntrylerimSayfa() {
     include: {
       author: { select: { id: true, username: true, avatarUrl: true } },
       topic: { select: { title: true, slug: true } },
+      _count: { select: { comments: true } },
     },
   });
 
@@ -36,6 +37,7 @@ export default async function EntrylerimSayfa() {
         include: {
           author: { select: { id: true, username: true, avatarUrl: true } },
           topic: { select: { title: true, slug: true } },
+          _count: { select: { comments: true } },
         },
       });
 
@@ -70,6 +72,7 @@ export default async function EntrylerimSayfa() {
                 createdAt={e.createdAt.toISOString()}
                 isEdited={e.isEdited}
                 entryNumber={idx + 1}
+                commentCount={(e as any)._count?.comments ?? 0}
               />
             </div>
           ))}

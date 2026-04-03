@@ -47,6 +47,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
       include: {
         author: { select: { id: true, username: true, avatarUrl: true } },
         topic: { select: { title: true, slug: true } },
+        _count: { select: { comments: true } },
       },
     });
 
@@ -67,6 +68,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
               createdAt={e.createdAt.toISOString()}
               isEdited={e.isEdited}
               entryNumber={idx + 1}
+              commentCount={e._count.comments}
             />
           </div>
         ))}
@@ -119,6 +121,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
           include: {
             author: { select: { id: true, username: true, avatarUrl: true } },
             topic: { select: { title: true, slug: true } },
+            _count: { select: { comments: true } },
           },
         },
       },
@@ -141,6 +144,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
               createdAt={f.entry.createdAt.toISOString()}
               isEdited={f.entry.isEdited}
               entryNumber={idx + 1}
+              commentCount={f.entry._count.comments}
             />
           </div>
         ))}

@@ -64,6 +64,7 @@ export default async function TakipSayfa() {
       topic: {
         select: { title: true, slug: true },
       },
+      _count: { select: { comments: true } },
     },
   });
 
@@ -97,6 +98,7 @@ export default async function TakipSayfa() {
                 isCaylak={entry.author.role === "CAYLAK"}
                 currentUserId={currentUserId}
                 authorId={entry.author.id}
+                commentCount={entry._count.comments}
               />
             </div>
           ))}

@@ -26,6 +26,7 @@ export default async function EntrySayfa({ params }: Props) {
     include: {
       author: { select: { id: true, username: true, avatarUrl: true } },
       topic: { select: { id: true, title: true, slug: true } },
+      _count: { select: { comments: true } },
     },
   });
 
@@ -47,6 +48,7 @@ export default async function EntrySayfa({ params }: Props) {
           createdAt={entry.createdAt.toISOString()}
           isEdited={entry.isEdited}
           entryNumber={1}
+          commentCount={entry._count.comments}
         />
       </div>
     </div>

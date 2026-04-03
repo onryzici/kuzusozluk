@@ -13,7 +13,7 @@ const sekmeler = [
 
 export default function SiralamaSekmeleri({ slug, current }: SiralamaSekmeleriProps) {
   return (
-    <div className="flex items-center gap-1 mb-4 border-b border-border pb-2">
+    <div className="flex items-center gap-1">
       {sekmeler.map((s) => (
         <Link
           key={s.key}

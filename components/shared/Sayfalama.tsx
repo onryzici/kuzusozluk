@@ -18,7 +18,7 @@ export default function Sayfalama({ currentPage, totalPages, basePath }: Sayfala
   }
 
   return (
-    <nav className="flex items-center justify-center gap-1 mt-6">
+    <nav className="flex items-center justify-center gap-1">
       {currentPage > 1 && (
         <Link href={href(currentPage - 1)} className="p-2 hover:bg-accent rounded">
           <ChevronLeft className="h-4 w-4" />

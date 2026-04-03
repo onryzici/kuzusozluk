@@ -166,14 +166,16 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
           )}
         </div>
       </div>
-      <SiralamaSekmeleri slug={slug} current={siralama} />
-      {totalPages > 1 && (
-        <Sayfalama
-          currentPage={page}
-          totalPages={totalPages}
-          basePath={`/baslik/${slug}`}
-        />
-      )}
+      <div className="flex items-center justify-between mb-3">
+        <SiralamaSekmeleri slug={slug} current={siralama} />
+        {totalPages > 1 && (
+          <Sayfalama
+            currentPage={page}
+            totalPages={totalPages}
+            basePath={`/baslik/${slug}`}
+          />
+        )}
+      </div>
       <AnketGoster topicSlug={slug} isLoggedIn={!!session?.user} />
       <div className="space-y-4">
         {entries.map((entry, idx) => (

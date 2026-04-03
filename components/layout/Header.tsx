@@ -64,7 +64,7 @@ function UserMenu({ session }: { session: any }) {
             <Mail className="h-3 w-3" /> mesajlar
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem className="sm:hidden">
           <Link href="/online" className="flex items-center gap-2 w-full text-xs">
             <Circle className="h-3 w-3 fill-green-500 text-green-500" /> online
           </Link>

@@ -9,7 +9,7 @@ export default async function YeniBaslikSayfa() {
   }
 
   return (
-    <div className="px-4 py-6 max-w-lg">
+    <div className="px-4 py-6 max-w-lg mx-auto">
       <h1 className="text-base font-medium text-foreground mb-1">yeni başlık oluştur</h1>
       <p className="text-xs text-muted-foreground mb-6">
         başlık ve ilk entry ile birlikte yeni bir konu açın.

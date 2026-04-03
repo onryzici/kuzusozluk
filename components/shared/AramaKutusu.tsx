@@ -86,8 +86,8 @@ export default function AramaKutusu() {
         </div>
       )}
       {open && isLoading && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md p-3 text-sm text-muted-foreground">
-          Aranıyor...
+        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-[100] p-3 text-sm text-muted-foreground">
+          aranıyor...
         </div>
       )}
     </div>

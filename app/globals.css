@@ -162,6 +162,11 @@
   display: inline;
 }
 
+/* Safe area padding for mobile tab bar (notch devices) */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Smooth scroll */
 main {
   scroll-behavior: smooth;

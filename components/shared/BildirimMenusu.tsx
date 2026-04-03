@@ -96,7 +96,7 @@ export default function BildirimMenusu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-popover border border-border rounded-md shadow-lg z-[60] max-h-96 overflow-y-auto">
+        <div className="fixed right-4 left-4 sm:left-auto sm:absolute sm:right-0 top-auto sm:top-full mt-1 sm:w-80 bg-popover border border-border rounded-md shadow-lg z-[60] max-h-96 overflow-y-auto">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <span className="text-xs font-medium">bildirimler</span>
           </div>

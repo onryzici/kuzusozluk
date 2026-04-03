@@ -67,9 +67,27 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     select: { id: true },
   })).map((e) => e.id);
 
+  // anket id'lerini ve option id'lerini bul
+  const pollIds = (await prisma.poll.findMany({
+    where: { topicId: topic.id },
+    select: { id: true },
+  })).map((p) => p.id);
+
+  const optionIds = pollIds.length > 0
+    ? (await prisma.pollOption.findMany({
+        where: { pollId: { in: pollIds } },
+        select: { id: true },
+      })).map((o) => o.id)
+    : [];
+
   // tek transaction ile hepsini sil
   await prisma.$transaction([
     prisma.notification.deleteMany({ where: { link: { contains: slug } } }),
+    // anket verilerini sil
+    ...(optionIds.length > 0 ? [prisma.pollVote.deleteMany({ where: { optionId: { in: optionIds } } })] : []),
+    ...(pollIds.length > 0 ? [prisma.pollOption.deleteMany({ where: { pollId: { in: pollIds } } })] : []),
+    ...(pollIds.length > 0 ? [prisma.poll.deleteMany({ where: { topicId: topic.id } })] : []),
+    // entry verilerini sil
     prisma.vote.deleteMany({ where: { entryId: { in: entryIds } } }),
     prisma.favorite.deleteMany({ where: { entryId: { in: entryIds } } }),
     prisma.comment.deleteMany({ where: { entryId: { in: entryIds } } }),

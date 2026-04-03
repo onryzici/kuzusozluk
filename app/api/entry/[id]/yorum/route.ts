@@ -66,6 +66,7 @@ export async function POST(
       );
     }
 
+    parsed.data.content = parsed.data.content.toLowerCase();
     const yasakli = checkYasakliKelime(parsed.data.content);
     if (yasakli) {
       return NextResponse.json(

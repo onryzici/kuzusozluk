@@ -91,7 +91,7 @@ export default function Sidebar() {
                   {item.title}
                 </span>
                 <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-                  {item.dayCount > 0 ? item.dayCount : item.entryCount}
+                  {item.entryCount}
                 </span>
               </Link>
             ))}

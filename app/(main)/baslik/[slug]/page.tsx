@@ -128,6 +128,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         author: {
           select: { id: true, username: true, avatarUrl: true, role: true },
         },
+        _count: { select: { comments: true } },
       },
     }),
     prisma.entry.count({ where: entryWhere }),
@@ -140,7 +141,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
       <div className="flex items-start justify-between gap-4 mb-6">
         <BaslikDetay
           title={topic.title}
-          entryCount={topic.entryCount}
+          entryCount={total}
           createdAt={topic.createdAt.toISOString()}
         />
         <div className="flex items-center gap-2 shrink-0">
@@ -177,6 +178,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
             currentUserId={currentUserId}
             authorId={entry.author.id}
             currentUserRole={userRole}
+            commentCount={entry._count.comments}
           />
         ))}
       </div>

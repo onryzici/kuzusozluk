@@ -101,7 +101,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { title, description } = parsed.data;
+  const title = parsed.data.title.toLowerCase();
+  const description = parsed.data.description?.toLowerCase();
 
   const yasakli = checkYasakliKelime(title + " " + (description || ""));
   if (yasakli) {

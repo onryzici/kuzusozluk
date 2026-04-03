@@ -75,58 +75,40 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
       <p className="text-muted-foreground text-center py-12 text-sm">henüz entry yok.</p>
     );
   } else if (sekme === "takip") {
-    // Get the list of user IDs this user follows
     const followingList = await prisma.follow.findMany({
       where: { followerId: user.id },
-      select: { followingId: true },
+      include: {
+        following: {
+          select: { username: true, displayName: true, avatarUrl: true, entryCount: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    const followingIds = followingList.map((f) => f.followingId);
-
-    if (followingIds.length === 0) {
-      content = (
-        <p className="text-muted-foreground text-center py-12 text-sm">
-          henüz kimseyi takip etmiyor.
-        </p>
-      );
-    } else {
-      const feedEntries = await prisma.entry.findMany({
-        where: { authorId: { in: followingIds } },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        include: {
-          author: { select: { id: true, username: true, avatarUrl: true } },
-          topic: { select: { title: true, slug: true } },
-        },
-      });
-
-      content = feedEntries.length > 0 ? (
-        <div className="divide-y divide-border/60">
-          {feedEntries.map((e, idx) => (
-            <div key={e.id}>
-              <Link href={`/baslik/${e.topic.slug}`} className="text-xs text-primary hover:underline font-medium inline-block pt-3">
-                {e.topic.title}
-              </Link>
-              <EntryKart
-                id={e.id}
-                content={e.content}
-                upvotes={e.upvotes}
-                downvotes={e.downvotes}
-                authorUsername={e.author.username}
-                authorAvatarUrl={e.author.avatarUrl}
-                createdAt={e.createdAt.toISOString()}
-                isEdited={e.isEdited}
-                entryNumber={idx + 1}
-              />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-center py-12 text-sm">
-          takip edilen kullanıcıların henüz entry'si yok.
-        </p>
-      );
-    }
+    content = followingList.length > 0 ? (
+      <div className="space-y-1">
+        {followingList.map((f) => (
+          <div key={f.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-accent/60 transition-colors">
+            <Link href={`/kullanici/${f.following.username}`} className="flex items-center gap-2.5">
+              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                {f.following.username[0]}
+              </div>
+              <div>
+                <span className="text-sm text-primary font-medium">{f.following.username}</span>
+                {f.following.displayName && (
+                  <span className="text-xs text-muted-foreground ml-2">{f.following.displayName}</span>
+                )}
+              </div>
+            </Link>
+            <span className="text-[11px] text-muted-foreground">{f.following.entryCount} entry</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="text-muted-foreground text-center py-12 text-sm">
+        henüz kimseyi takip etmiyor.
+      </p>
+    );
   } else if (sekme === "favoriler") {
     const favorites = await prisma.favorite.findMany({
       where: { userId: user.id },

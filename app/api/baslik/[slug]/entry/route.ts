@@ -53,7 +53,7 @@ export async function POST(
     );
   }
 
-  const sanitizedContent = sanitizeInput(parsed.data.content);
+  const sanitizedContent = sanitizeInput(parsed.data.content).toLowerCase();
 
   const yasakli = checkYasakliKelime(sanitizedContent);
   if (yasakli) {

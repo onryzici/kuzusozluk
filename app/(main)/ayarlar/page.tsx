@@ -19,12 +19,15 @@ export default async function AyarlarSayfa() {
       username: true,
       email: true,
       avatarUrl: true,
+      role: true,
     },
   });
 
   if (!user) {
     redirect("/giris");
   }
+
+  const isAdmin = user.role === "ADMIN";
 
   return (
     <div className="px-4 py-6 max-w-lg">
@@ -43,9 +46,11 @@ export default async function AyarlarSayfa() {
         initialBio={user.bio || ""}
       />
 
-      <div className="mt-10">
-        <HesapSil username={user.username} />
-      </div>
+      {isAdmin && (
+        <div className="mt-10">
+          <HesapSil username={user.username} />
+        </div>
+      )}
     </div>
   );
 }

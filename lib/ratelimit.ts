@@ -11,10 +11,10 @@ function createLimiter(tokens: number, window: `${number} s` | `${number} m` | `
 }
 
 export const rateLimiters = {
-  baslikOlustur: createLimiter(10, "1 h"),
-  entryYaz: createLimiter(30, "1 h"),
-  oyVer: createLimiter(100, "1 h"),
-  giris: createLimiter(5, "15 m"),
+  baslikOlustur: createLimiter(60, "1 h"),
+  entryYaz: createLimiter(120, "1 h"),
+  oyVer: createLimiter(300, "1 h"),
+  giris: createLimiter(20, "15 m"),
 };
 
 export async function checkRateLimit(

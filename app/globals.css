@@ -162,6 +162,11 @@
   display: inline;
 }
 
+/* Smooth scroll */
+main {
+  scroll-behavior: smooth;
+}
+
 /* Scrollbar — main area */
 main::-webkit-scrollbar {
   width: 8px;

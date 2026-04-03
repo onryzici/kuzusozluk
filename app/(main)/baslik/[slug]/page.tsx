@@ -10,6 +10,8 @@ import Sayfalama from "@/components/shared/Sayfalama";
 import BaslikYokSayfa from "@/components/baslik/BaslikYokSayfa";
 import SiralamaSekmeleri from "@/components/entry/SiralamaSekmeleri";
 import AdminBaslikIslemleri from "@/components/baslik/AdminBaslikIslemleri";
+import AnketGoster from "@/components/anket/AnketGoster";
+import AnketButon from "@/components/anket/AnketButon";
 import { auth } from "@/lib/auth";
 
 type Props = {
@@ -166,6 +168,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         </div>
       </div>
       <SiralamaSekmeleri slug={slug} current={siralama} />
+      <AnketGoster topicSlug={slug} isLoggedIn={!!session?.user} />
       <div className="space-y-4">
         {entries.map((entry, idx) => (
           <EntryKart
@@ -200,7 +203,10 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         />
       )}
       {session?.user && !topic.isLocked && (
-        <EntryForm topicSlug={slug} />
+        <div className="space-y-3">
+          <EntryForm topicSlug={slug} />
+          <AnketButon topicSlug={slug} />
+        </div>
       )}
     </div>
   );

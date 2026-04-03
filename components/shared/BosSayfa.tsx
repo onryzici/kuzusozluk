@@ -1,14 +1,19 @@
-import { FileQuestion } from "lucide-react";
-
 type BosSayfaProps = {
   mesaj?: string;
+  oneri?: string;
 };
 
-export default function BosSayfa({ mesaj = "İçerik bulunamadı." }: BosSayfaProps) {
+export default function BosSayfa({
+  mesaj = "burada henuz bir sey yok.",
+  oneri = "ilk icerigi sen olusturabilirsin!",
+}: BosSayfaProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-      <FileQuestion className="h-12 w-12 mb-4" />
+      <span className="text-4xl mb-4" role="img" aria-label="koyun">
+        🐑
+      </span>
       <p className="text-sm">{mesaj}</p>
+      {oneri && <p className="text-xs mt-1 text-muted-foreground/70">{oneri}</p>}
     </div>
   );
 }

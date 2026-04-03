@@ -9,6 +9,7 @@ export default function MainLayout({
 }) {
   return (
     <div className="h-dvh flex flex-col">
+      <div className="h-[3px] bg-primary w-full shrink-0" />
       <div className="shrink-0">
         <Header />
       </div>

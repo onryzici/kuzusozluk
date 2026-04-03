@@ -39,6 +39,8 @@ model User {
   actedNotifications Notification[] @relation("NotificationActor")
   topicFollows TopicFollow[]
   announcements Announcement[] @relation("AnnouncementAuthor")
+  pollVotes     PollVote[]
+  createdPolls  Poll[]         @relation("PollAuthor")
 
   @@index([username])
   @@index([karma])
@@ -67,6 +69,7 @@ model Topic {
   entries Entry[]
   tags    TopicTag[]
   topicFollows TopicFollow[]
+  polls   Poll[]
 
   @@index([slug])
   @@index([dayCount])
@@ -268,4 +271,43 @@ model Announcement {
 
   author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
   authorId  String
+}
+
+model Poll {
+  id        String    @id @default(cuid())
+  question  String    @db.VarChar(300)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  author    User      @relation("PollAuthor", fields: [authorId], references: [id])
+  authorId  String
+  topic     Topic     @relation(fields: [topicId], references: [id])
+  topicId   String
+
+  options   PollOption[]
+
+  @@index([topicId])
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  text   String @db.VarChar(200)
+
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollId String
+
+  votes  PollVote[]
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user     User       @relation(fields: [userId], references: [id])
+  userId   String
+  option   PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  optionId String
+
+  @@unique([userId, optionId])
 }

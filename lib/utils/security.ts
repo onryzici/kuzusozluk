@@ -1,12 +1,24 @@
 /**
- * XSS koruması
+ * XSS koruması — zararlı HTML/JS kalıplarını temizler
  */
 export function sanitizeInput(input: string): string {
   return input
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+=/gi, "")
-    .replace(/<script/gi, "")
-    .replace(/<\/script/gi, "");
+    // script ve tehlikeli tag'ler
+    .replace(/<\/?script[^>]*>/gi, "")
+    .replace(/<\/?iframe[^>]*>/gi, "")
+    .replace(/<\/?object[^>]*>/gi, "")
+    .replace(/<\/?embed[^>]*>/gi, "")
+    .replace(/<\/?form[^>]*>/gi, "")
+    .replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, "")
+    // event handler'lar (onclick, onerror, onload vb.)
+    .replace(/\bon\w+\s*=/gi, "")
+    // javascript: ve data: protokolleri
+    .replace(/javascript\s*:/gi, "")
+    .replace(/data\s*:\s*text\/html/gi, "")
+    .replace(/vbscript\s*:/gi, "")
+    // style içinde expression/url
+    .replace(/expression\s*\(/gi, "")
+    .replace(/url\s*\(\s*['"]?\s*javascript/gi, "");
 }
 
 /**

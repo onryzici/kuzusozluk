@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
+import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 
 const sifreSifirlaSchema = z.object({
   email: z.string().email("Geçerli bir e-posta adresi girin"),
@@ -10,6 +11,15 @@ const sifreSifirlaSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const { allowed } = await checkRateLimit(rateLimiters.sifreSifirla, ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMIT", message: "Çok fazla deneme. Lütfen daha sonra tekrar deneyin." } },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = sifreSifirlaSchema.safeParse(body);
 

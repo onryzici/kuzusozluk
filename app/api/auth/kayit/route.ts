@@ -5,9 +5,19 @@ import { prisma } from "@/lib/prisma";
 import { kayitSchema } from "@/lib/validations/auth";
 import { sendEmail, isSmtpConfigured } from "@/lib/email";
 import { createNotification } from "@/lib/notifications";
+import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const { allowed } = await checkRateLimit(rateLimiters.kayit, ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMIT", message: "Çok fazla deneme. Lütfen daha sonra tekrar deneyin." } },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = kayitSchema.safeParse(body);
 

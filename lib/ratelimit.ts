@@ -15,6 +15,9 @@ export const rateLimiters = {
   entryYaz: createLimiter(120, "1 h"),
   oyVer: createLimiter(300, "1 h"),
   giris: createLimiter(20, "15 m"),
+  kayit: createLimiter(5, "1 h"),
+  sifreSifirla: createLimiter(5, "1 h"),
+  genel: createLimiter(120, "1 m"),
 };
 
 export async function checkRateLimit(

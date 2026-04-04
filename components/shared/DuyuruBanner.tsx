@@ -48,7 +48,7 @@ export default function DuyuruBanner() {
 
   return (
     <div className="w-full bg-primary text-primary-foreground">
-      <div className="max-w-[1200px] mx-auto px-4 py-2.5 flex items-center gap-3">
+      <div className="max-w-[1400px] mx-auto px-4 py-2.5 flex items-center gap-3">
         <Megaphone className="h-4 w-4 shrink-0" />
         <div className="flex-1 min-w-0">
           <Link href="/duyurular" className="hover:underline">

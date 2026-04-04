@@ -121,7 +121,7 @@ export default function Header() {
       </div>
 
       {/* masaüstü üst bar */}
-      <div className="hidden sm:flex max-w-[1200px] mx-auto items-center gap-3 h-11 px-4">
+      <div className="hidden sm:flex max-w-[1400px] mx-auto items-center gap-3 h-11 px-4">
         <Link href="/" className="flex items-center gap-1.5 shrink-0 mr-2">
           <span className="text-lg">🐑</span>
           <span className="font-bold text-sm tracking-tight">
@@ -147,7 +147,7 @@ export default function Header() {
 
       {/* alt navigasyon — tabs */}
       <div className="border-t border-border">
-        <div className="max-w-[1200px] mx-auto px-3 sm:px-4 flex items-center gap-0 sm:gap-4 h-10 sm:h-9 overflow-x-auto scrollbar-none">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-4 flex items-center gap-0 sm:gap-4 h-10 sm:h-9 overflow-x-auto scrollbar-none">
           {navLinks.map((link) => {
             const isActive = link.href === "/"
               ? pathname === "/"

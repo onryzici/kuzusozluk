@@ -43,7 +43,7 @@ export default function Sidebar() {
   }, [fetchGundem]);
 
   return (
-    <aside className="hidden lg:block w-56 shrink-0 h-full overflow-y-auto border-r border-border bg-background">
+    <aside className="hidden lg:block w-72 shrink-0 h-full overflow-y-auto border-r border-border bg-background">
       <div className="p-2">
         <div className="flex items-center justify-between px-2 py-2">
           <span className="text-xs text-muted-foreground">bugün</span>

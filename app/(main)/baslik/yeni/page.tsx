@@ -2,11 +2,17 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import YeniBaslikForm from "@/components/baslik/YeniBaslikForm";
 
-export default async function YeniBaslikSayfa() {
+type Props = {
+  searchParams: Promise<{ title?: string }>;
+};
+
+export default async function YeniBaslikSayfa({ searchParams }: Props) {
   const session = await auth();
   if (!session?.user) {
     redirect("/giris?callbackUrl=/baslik/yeni");
   }
+
+  const { title } = await searchParams;
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
@@ -14,7 +20,7 @@ export default async function YeniBaslikSayfa() {
       <p className="text-xs text-muted-foreground mb-6">
         başlık ve ilk entry ile birlikte yeni bir konu açın.
       </p>
-      <YeniBaslikForm />
+      <YeniBaslikForm initialTitle={title || ""} />
     </div>
   );
 }

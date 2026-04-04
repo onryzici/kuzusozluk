@@ -43,6 +43,8 @@ model User {
   createdPolls  Poll[]         @relation("PollAuthor")
   blocking      Block[]        @relation("Blocker")
   blockedBy     Block[]        @relation("Blocked")
+  ukdeler       Ukde[]         @relation("UkdeAuthor")
+  claimedUkdeler Ukde[]        @relation("UkdeClaimer")
 
   @@index([username])
   @@index([karma])
@@ -324,4 +326,19 @@ model Block {
   blockedId String
 
   @@unique([blockerId, blockedId])
+}
+
+model Ukde {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(200)
+  createdAt DateTime @default(now())
+
+  author    User     @relation("UkdeAuthor", fields: [authorId], references: [id])
+  authorId  String
+  claimedBy User?    @relation("UkdeClaimer", fields: [claimedById], references: [id])
+  claimedById String?
+  claimedAt DateTime?
+  topicSlug String?
+
+  @@index([createdAt])
 }

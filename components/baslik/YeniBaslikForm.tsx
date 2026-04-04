@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
 
-export default function YeniBaslikForm() {
+export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: string }) {
   const router = useRouter();
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);

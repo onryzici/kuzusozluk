@@ -25,6 +25,7 @@ const navLinks = [
 ];
 
 const desktopOnlyLinks = [
+  { href: "/ukde", label: "ukde" },
   { href: "/debe", label: "debe" },
   { href: "/tarihte-bugun", label: "tarihte bugün" },
   { href: "/duyurular", label: "duyurular" },

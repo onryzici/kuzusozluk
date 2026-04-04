@@ -136,5 +136,11 @@ export async function POST(request: NextRequest) {
     select: { id: true, title: true, slug: true, createdAt: true },
   });
 
+  // bu başlık bir ukde'den açıldıysa ukde'yi güncelle
+  await prisma.ukde.updateMany({
+    where: { title, topicSlug: null },
+    data: { topicSlug: slug },
+  });
+
   return NextResponse.json({ success: true, data: topic }, { status: 201 });
 }

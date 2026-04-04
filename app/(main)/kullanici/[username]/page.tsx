@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Calendar, MessageSquare, Award, Send } from "lucide-react";
 import { auth } from "@/lib/auth";
 import TakipButon from "@/components/kullanici/TakipButon";
+import EngelleButon from "@/components/kullanici/EngelleButon";
 import Image from "next/image";
 
 type Props = {
@@ -82,7 +83,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
     return Promise.resolve(null);
   }
 
-  // Run follow check and tab content in parallel
+  // Run follow check, block check and tab content in parallel
   const followCheckPromise = (session?.user && !isSelf)
     ? prisma.follow.findUnique({
         where: {
@@ -94,12 +95,25 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
       })
     : Promise.resolve(null);
 
-  const [tabData, followRecord] = await Promise.all([
+  const blockCheckPromise = (session?.user && !isSelf)
+    ? prisma.block.findUnique({
+        where: {
+          blockerId_blockedId: {
+            blockerId: session.user.id,
+            blockedId: user.id,
+          },
+        },
+      })
+    : Promise.resolve(null);
+
+  const [tabData, followRecord, blockRecord] = await Promise.all([
     getTabQuery(),
     followCheckPromise,
+    blockCheckPromise,
   ]);
 
   const isFollowing = !!followRecord;
+  const isBlocked = !!blockRecord;
 
   // Render tab content from parallel-fetched data
   let content: React.ReactNode = null;
@@ -257,6 +271,10 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
                 >
                   <Send className="h-3 w-3" /> mesaj gönder
                 </Link>
+                <EngelleButon
+                  targetUsername={username}
+                  initialIsBlocked={isBlocked}
+                />
               </div>
             )}
           </div>

@@ -41,6 +41,8 @@ model User {
   announcements Announcement[] @relation("AnnouncementAuthor")
   pollVotes     PollVote[]
   createdPolls  Poll[]         @relation("PollAuthor")
+  blocking      Block[]        @relation("Blocker")
+  blockedBy     Block[]        @relation("Blocked")
 
   @@index([username])
   @@index([karma])
@@ -310,4 +312,16 @@ model PollVote {
   optionId String
 
   @@unique([userId, optionId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  blocker   User   @relation("Blocker", fields: [blockerId], references: [id])
+  blockerId String
+  blocked   User   @relation("Blocked", fields: [blockedId], references: [id])
+  blockedId String
+
+  @@unique([blockerId, blockedId])
 }

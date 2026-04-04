@@ -126,11 +126,21 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
   // çaylak entry'lerini sadece admin/mod görebilir
   const userRole = (session?.user as any)?.role;
   const canSeeCaylak = userRole === "ADMIN" || userRole === "MODERATOR";
-  const entryWhere = canSeeCaylak
-    ? { topicId: topic.id }
-    : { topicId: topic.id, author: { role: { not: "CAYLAK" as const } } };
-
   const currentUserId = (session?.user as any)?.id || null;
+
+  // engellenen kullanıcıların entrylerini gizle
+  const blockedUsers = currentUserId
+    ? (await prisma.block.findMany({
+        where: { blockerId: currentUserId },
+        select: { blockedId: true },
+      })).map((b) => b.blockedId)
+    : [];
+
+  const entryWhere = {
+    topicId: topic.id,
+    ...(!canSeeCaylak && { author: { role: { not: "CAYLAK" as const } } }),
+    ...(blockedUsers.length > 0 && { authorId: { notIn: blockedUsers } }),
+  };
 
   const [entries, total] = await Promise.all([
     prisma.entry.findMany({

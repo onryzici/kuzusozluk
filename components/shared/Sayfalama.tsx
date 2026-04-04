@@ -40,9 +40,12 @@ export default function Sayfalama({ currentPage, totalPages, basePath }: Sayfala
 
       <span className="text-sm text-muted-foreground">/</span>
 
-      <span className="h-9 px-3 flex items-center rounded-md border border-border text-sm">
+      <button
+        onClick={() => router.push(href(totalPages))}
+        className="h-9 px-3 flex items-center rounded-md border border-border text-sm hover:bg-accent transition-colors cursor-pointer"
+      >
         {totalPages}
-      </span>
+      </button>
 
       {currentPage < totalPages && (
         <button

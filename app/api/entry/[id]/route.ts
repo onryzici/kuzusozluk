@@ -106,10 +106,17 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       prisma.entry.delete({ where: { id } }),
     ]);
 
-    await prisma.topic.update({
+    const updatedTopic = await prisma.topic.update({
       where: { id: entry.topicId },
       data: { entryCount: { decrement: 1 } },
+      select: { id: true, entryCount: true },
     });
+
+    // başlıkta hiç entry kalmadıysa başlığı da sil
+    if (updatedTopic.entryCount <= 0) {
+      await prisma.topicFollow.deleteMany({ where: { topicId: updatedTopic.id } });
+      await prisma.topic.delete({ where: { id: updatedTopic.id } });
+    }
 
     await prisma.user.update({
       where: { id: entry.authorId },

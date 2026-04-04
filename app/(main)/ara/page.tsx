@@ -12,7 +12,7 @@ export default async function AramaSayfa({ searchParams }: Props) {
 
   if (!q || q.trim().length < 2) {
     return (
-      <div className="w-full px-4 py-6">
+      <div className="w-full px-4 lg:px-8 py-6">
         <AramaSayfaInput initialQuery="" />
         <p className="text-muted-foreground text-sm text-center py-8">başlık, entry veya kullanıcı ara.</p>
       </div>
@@ -90,7 +90,7 @@ export default async function AramaSayfa({ searchParams }: Props) {
   }
 
   return (
-    <div className="w-full px-4 py-6">
+    <div className="w-full px-4 lg:px-8 py-6">
       <AramaSayfaInput initialQuery={q} />
       <div className="flex gap-4 mb-4 text-sm">
         {[

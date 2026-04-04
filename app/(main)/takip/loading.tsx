@@ -1,6 +1,6 @@
 export default function TakipLoading() {
   return (
-    <div className="w-full px-4 py-6">
+    <div className="w-full px-4 lg:px-8 py-6">
       <div className="h-5 w-36 bg-muted animate-pulse rounded mb-4" />
       <div className="space-y-1">
         {Array.from({ length: 10 }).map((_, i) => (

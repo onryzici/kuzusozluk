@@ -103,7 +103,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
             blockedId: user.id,
           },
         },
-      })
+      }).catch(() => null)
     : Promise.resolve(null);
 
   const [tabData, followRecord, blockRecord] = await Promise.all([

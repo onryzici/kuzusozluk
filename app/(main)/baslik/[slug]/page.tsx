@@ -129,12 +129,17 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
   const currentUserId = (session?.user as any)?.id || null;
 
   // engellenen kullanıcıların entrylerini gizle
-  const blockedUsers = currentUserId
-    ? (await prisma.block.findMany({
+  let blockedUsers: string[] = [];
+  if (currentUserId) {
+    try {
+      blockedUsers = (await prisma.block.findMany({
         where: { blockerId: currentUserId },
         select: { blockedId: true },
-      })).map((b) => b.blockedId)
-    : [];
+      })).map((b) => b.blockedId);
+    } catch {
+      // Block tablosu henüz yoksa sessizce devam et
+    }
+  }
 
   const entryWhere = {
     topicId: topic.id,

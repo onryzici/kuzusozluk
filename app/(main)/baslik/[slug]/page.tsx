@@ -151,7 +151,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-6">
       <Link href="/" className="lg:hidden flex items-center gap-1 text-xs text-muted-foreground mb-3 hover:text-foreground">
         <ArrowLeft className="h-3 w-3" /> başlıklar
       </Link>

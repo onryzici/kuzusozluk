@@ -45,7 +45,7 @@ export default async function OnlineSayfa() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-6">
       <h1 className="text-lg font-bold mb-4">şu an online ({onlineUsers.length})</h1>
 
       {onlineUsers.length === 0 ? (

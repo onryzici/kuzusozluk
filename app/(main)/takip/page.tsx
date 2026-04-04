@@ -34,7 +34,7 @@ export default async function TakipSayfa() {
   // hic takip yoksa bos sayfa
   if (followedUserIds.length === 0 && followedTopicIds.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="w-full px-4 py-6">
         <h1 className="text-lg font-bold mb-4">takip</h1>
         <p className="text-sm text-muted-foreground text-center py-8">
           henuz kimseyi veya hicbir basligi takip etmiyorsun.
@@ -69,7 +69,7 @@ export default async function TakipSayfa() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-6">
       <h1 className="text-lg font-bold mb-4">takip</h1>
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">

@@ -15,7 +15,7 @@ export const ayarlarSchema = z
     currentPassword: z.string().optional().or(z.literal("")),
     newPassword: z
       .string()
-      .min(6, "Yeni şifre en az 6 karakter olmalı")
+      .min(8, "Yeni şifre en az 8 karakter olmalı")
       .max(100, "Yeni şifre en fazla 100 karakter olmalı")
       .optional()
       .or(z.literal("")),

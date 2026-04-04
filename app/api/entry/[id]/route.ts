@@ -123,8 +123,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       where: { id: entry.authorId },
       data: { entryCount: { decrement: 1 } },
     });
-  } catch (err) {
-    console.error("Entry delete error:", err);
+  } catch {
     return NextResponse.json(
       { success: false, error: { code: "DELETE_ERROR", message: "entry silinemedi" } },
       { status: 500 }

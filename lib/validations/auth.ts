@@ -9,7 +9,7 @@ export const kayitSchema = z.object({
   email: z.string().email("Geçerli bir e-posta adresi girin"),
   password: z
     .string()
-    .min(6, "Şifre en az 6 karakter olmalı")
+    .min(8, "Şifre en az 8 karakter olmalı")
     .max(100, "Şifre en fazla 100 karakter olmalı"),
 });
 

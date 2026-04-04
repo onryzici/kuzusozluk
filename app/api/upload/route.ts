@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 
 const MAX_SIZE = 500 * 1024; // 500KB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -11,6 +12,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "giriş yapmalısınız" } },
       { status: 401 }
+    );
+  }
+
+  const { allowed } = await checkRateLimit(rateLimiters.genel, (session.user as any).id);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: { code: "RATE_LIMIT", message: "Çok fazla deneme" } },
+      { status: 429 }
     );
   }
 
@@ -88,7 +97,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: { url } });
   } catch (err) {
-    console.error("Upload error:", err);
     return NextResponse.json(
       { success: false, error: { code: "UPLOAD_ERROR", message: "dosya yüklenirken bir hata oluştu" } },
       { status: 500 }

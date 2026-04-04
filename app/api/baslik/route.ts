@@ -7,7 +7,7 @@ import { yeniBaslikSchema } from "@/lib/validations/baslik";
 import { toSlug } from "@/lib/utils/slug";
 import { getCache, setCache, deleteCache, TTL } from "@/lib/redis";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
-import { checkYasakliKelime } from "@/lib/utils/security";
+import { checkYasakliKelime, sanitizeInput } from "@/lib/utils/security";
 import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
 
 export async function GET(request: NextRequest) {
@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const title = parsed.data.title.toLowerCase();
-  const description = parsed.data.description?.toLowerCase();
+  const title = sanitizeInput(parsed.data.title).toLowerCase();
+  const description = parsed.data.description ? sanitizeInput(parsed.data.description).toLowerCase() : undefined;
 
   const yasakli = checkYasakliKelime((title + " " + (description || "")).toLowerCase());
   if (yasakli) {

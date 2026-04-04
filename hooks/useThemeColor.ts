@@ -13,10 +13,20 @@ export function useThemeColor() {
     applyTheme(saved, resolvedTheme || "dark");
   }, [resolvedTheme]);
 
+  const baseVars = [
+    "--background", "--foreground", "--card", "--card-foreground",
+    "--popover", "--popover-foreground", "--secondary", "--secondary-foreground",
+    "--accent-foreground", "--input",
+  ];
+
   const applyTheme = useCallback((themeId: string, mode: string) => {
     const theme = getThemeById(themeId);
     const colors = mode === "dark" ? theme.colors.dark : theme.colors.light;
     const root = document.documentElement;
+    // Clear base overrides from previous theme so CSS defaults apply
+    baseVars.forEach((key) => {
+      if (!(key in colors)) root.style.removeProperty(key);
+    });
     Object.entries(colors).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });

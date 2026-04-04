@@ -22,12 +22,12 @@ const navLinks = [
   { href: "/bebe", label: "bebe" },
   { href: "/takip", label: "takip" },
   { href: "/son", label: "akış" },
-];
-
-const desktopOnlyLinks = [
   { href: "/ukde", label: "ukde" },
   { href: "/debe", label: "debe" },
   { href: "/tarihte-bugun", label: "tarihte bugün" },
+];
+
+const desktopOnlyLinks = [
   { href: "/duyurular", label: "duyurular" },
   { href: "/rastgele", label: "rastgele" },
 ];

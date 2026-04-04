@@ -109,7 +109,7 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-4xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold text-primary mb-4">{title}</h1>
 
       <p className="text-muted-foreground mb-6">

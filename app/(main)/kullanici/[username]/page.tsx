@@ -187,7 +187,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Profil kartı */}
       <div className="mb-6 pb-6 border-b border-border/60">
         <div className="flex items-start gap-4">

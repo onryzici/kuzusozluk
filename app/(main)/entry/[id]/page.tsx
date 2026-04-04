@@ -33,7 +33,7 @@ export default async function EntrySayfa({ params }: Props) {
   if (!entry) notFound();
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-4xl mx-auto px-4 py-6">
       <Link href={`/baslik/${entry.topic.slug}`} className="text-xl font-bold text-primary hover:underline">
         {entry.topic.title}
       </Link>

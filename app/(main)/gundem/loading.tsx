@@ -1,6 +1,6 @@
 export default function GundemLoading() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-4xl mx-auto px-4 py-6">
       <div className="h-5 w-24 bg-muted animate-pulse rounded mb-4" />
       <div className="space-y-1">
         {Array.from({ length: 15 }).map((_, i) => (

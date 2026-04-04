@@ -5,6 +5,7 @@ import { yeniEntrySchema } from "@/lib/validations/entry";
 import { deleteCache } from "@/lib/redis";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 import { sanitizeInput, checkYasakliKelime } from "@/lib/utils/security";
+import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
 import { processMentions, createNotification } from "@/lib/notifications";
 
 export async function POST(
@@ -53,7 +54,7 @@ export async function POST(
     );
   }
 
-  const sanitizedContent = sanitizeInput(parsed.data.content);
+  const sanitizedContent = lowercasePreserveLinks(sanitizeInput(parsed.data.content));
 
   const yasakli = checkYasakliKelime(sanitizedContent.toLowerCase());
   if (yasakli) {

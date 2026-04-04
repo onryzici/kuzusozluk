@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { yorumSchema } from "@/lib/validations/yorum";
 import { createNotification, processMentions } from "@/lib/notifications";
 import { checkYasakliKelime } from "@/lib/utils/security";
+import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
 
 export async function GET(
   _request: NextRequest,
@@ -85,7 +86,7 @@ export async function POST(
 
     const comment = await prisma.comment.create({
       data: {
-        content: parsed.data.content,
+        content: lowercasePreserveLinks(parsed.data.content),
         authorId: userId,
         entryId,
       },

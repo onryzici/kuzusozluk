@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { entryGuncelleSchema } from "@/lib/validations/entry";
+import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -62,7 +63,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const updated = await prisma.entry.update({
     where: { id },
-    data: { content: parsed.data.content, isEdited: true },
+    data: { content: lowercasePreserveLinks(parsed.data.content), isEdited: true },
     include: {
       author: { select: { id: true, username: true, avatarUrl: true } },
     },

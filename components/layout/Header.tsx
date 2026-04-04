@@ -115,6 +115,7 @@ export default function Header() {
           </span>
         </Link>
         <div className="flex items-center gap-0.5">
+          <ThemeToggle />
           <BildirimMenusu />
           <UserMenu session={session} />
         </div>

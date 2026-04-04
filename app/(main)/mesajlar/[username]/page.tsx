@@ -5,6 +5,7 @@ import MesajBalonu from "@/components/mesaj/MesajBalonu";
 import MesajForm from "@/components/mesaj/MesajForm";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { decryptMessage } from "@/lib/utils/encryption";
 
 export async function generateMetadata({
   params,
@@ -92,7 +93,7 @@ export default async function MesajDetayPage({
           messages.map((msg) => (
             <MesajBalonu
               key={msg.id}
-              content={msg.content}
+              content={decryptMessage(msg.content, msg.senderId, msg.receiverId)}
               createdAt={msg.createdAt.toISOString()}
               senderUsername={msg.sender.username}
               isOwn={msg.senderId === currentUserId}

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import MesajListesi from "@/components/mesaj/MesajListesi";
 import { Mail } from "lucide-react";
+import { decryptMessage } from "@/lib/utils/encryption";
 
 export const metadata = {
   title: "Mesajlar - Sözlük",
@@ -63,7 +64,7 @@ export default async function MesajlarPage() {
       conversationMap.set(otherUserId, {
         username: otherUsername,
         avatarUrl: otherAvatarUrl,
-        lastMessage: msg.content,
+        lastMessage: decryptMessage(msg.content, msg.senderId, msg.receiverId),
         lastMessageAt: msg.createdAt.toISOString(),
         isOwnMessage: isOwn,
         unreadCount: 0,

@@ -21,7 +21,7 @@ const navLinks = [
   { href: "/gundem", label: "gündem" },
   { href: "/bebe", label: "bebe" },
   { href: "/takip", label: "takip" },
-  { href: "/son", label: "son" },
+  { href: "/son", label: "akış" },
 ];
 
 const desktopOnlyLinks = [

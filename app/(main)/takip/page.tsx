@@ -24,36 +24,22 @@ export default async function TakipSayfa() {
   });
   const followedUserIds = followedUsers.map((f) => f.followingId);
 
-  // takip edilen basliklar
-  const followedTopics = await prisma.topicFollow.findMany({
-    where: { userId: currentUserId },
-    select: { topicId: true },
-  });
-  const followedTopicIds = followedTopics.map((f) => f.topicId);
-
   // hic takip yoksa bos sayfa
-  if (followedUserIds.length === 0 && followedTopicIds.length === 0) {
+  if (followedUserIds.length === 0) {
     return (
       <div className="w-full px-4 lg:px-8 py-6">
         <h1 className="text-lg font-bold mb-4">takip</h1>
         <p className="text-sm text-muted-foreground text-center py-8">
-          henuz kimseyi veya hicbir basligi takip etmiyorsun.
+          henuz kimseyi takip etmiyorsun.
         </p>
       </div>
     );
   }
 
-  // takip edilen kullanici veya basliklardaki entryler
+  // sadece takip edilen kullanicilarin entryleri
   const entries = await prisma.entry.findMany({
     where: {
-      OR: [
-        ...(followedUserIds.length > 0
-          ? [{ authorId: { in: followedUserIds } }]
-          : []),
-        ...(followedTopicIds.length > 0
-          ? [{ topicId: { in: followedTopicIds } }]
-          : []),
-      ],
+      authorId: { in: followedUserIds },
     },
     orderBy: { createdAt: "desc" },
     take: 30,

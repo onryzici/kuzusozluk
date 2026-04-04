@@ -53,9 +53,9 @@ export async function POST(
     );
   }
 
-  const sanitizedContent = sanitizeInput(parsed.data.content).toLowerCase();
+  const sanitizedContent = sanitizeInput(parsed.data.content);
 
-  const yasakli = checkYasakliKelime(sanitizedContent);
+  const yasakli = checkYasakliKelime(sanitizedContent.toLowerCase());
   if (yasakli) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN_CONTENT", message: `yasaklı içerik: "${yasakli}"` } },

@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const content = parsed.data.content.toLowerCase();
+  const content = parsed.data.content;
   const receiverUsername = parsed.data.receiverUsername;
   const senderId = (session.user as { id: string }).id;
   const senderUsername = (session.user as { username: string }).username;
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const yasakli = checkYasakliKelime(content);
+  const yasakli = checkYasakliKelime(content.toLowerCase());
   if (yasakli) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN_CONTENT", message: `yasaklı içerik: "${yasakli}"` } },

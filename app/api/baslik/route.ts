@@ -99,10 +99,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const title = parsed.data.title.toLowerCase();
-  const description = parsed.data.description?.toLowerCase();
+  const title = parsed.data.title;
+  const description = parsed.data.description;
 
-  const yasakli = checkYasakliKelime(title + " " + (description || ""));
+  const yasakli = checkYasakliKelime((title + " " + (description || "")).toLowerCase());
   if (yasakli) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN_CONTENT", message: `yasaklı içerik: "${yasakli}"` } },

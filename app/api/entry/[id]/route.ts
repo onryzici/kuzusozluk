@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const updated = await prisma.entry.update({
     where: { id },
-    data: { content: parsed.data.content.toLowerCase(), isEdited: true },
+    data: { content: parsed.data.content, isEdited: true },
     include: {
       author: { select: { id: true, username: true, avatarUrl: true } },
     },

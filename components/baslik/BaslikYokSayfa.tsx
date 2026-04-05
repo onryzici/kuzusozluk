@@ -29,6 +29,7 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const handleContentChange = useCallback((val: string) => {
     setContent(val);
@@ -45,6 +46,34 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
   const [anketOpen, setAnketOpen] = useState(false);
   const [anketSoru, setAnketSoru] = useState("");
   const [anketSecenekler, setAnketSecenekler] = useState(["", ""]);
+
+  async function handleSaveDraft() {
+    const trimmed = content.trim();
+    if (!trimmed || trimmed.length < 3) {
+      setError("taslak icin entry en az 3 karakter olmali.");
+      return;
+    }
+    setIsSavingDraft(true);
+    setError("");
+    try {
+      const res = await fetch("/api/taslak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content: trimmed }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("taslak kaydedildi");
+        clearDraft();
+      } else {
+        setError(json.error?.message || "taslak kaydedilemedi");
+      }
+    } catch {
+      setError("bir hata olustu");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -224,8 +253,16 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
               )}
             </div>
 
-            <div className="flex items-center justify-end">
-              <Button type="submit" disabled={isSubmitting}>
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveDraft}
+                disabled={isSubmitting || isSavingDraft}
+              >
+                {isSavingDraft ? "kaydediliyor..." : "taslak kaydet"}
+              </Button>
+              <Button type="submit" disabled={isSubmitting || isSavingDraft}>
                 {isSubmitting ? "gonderiliyor..." : "yolla"}
               </Button>
             </div>

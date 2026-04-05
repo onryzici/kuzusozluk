@@ -100,8 +100,11 @@ export default function EntryForm({ topicSlug }: EntryFormProps) {
           disabled={isSubmitting}
         />
 
-        <div className="flex items-center justify-end">
-          <Button type="submit" size="sm" disabled={isSubmitting}>
+        <div className="flex items-center justify-end gap-2">
+          {content.trim().length > 0 && (
+            <span className="text-[10px] text-muted-foreground mr-auto">taslak otomatik kaydedildi</span>
+          )}
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "gonderiliyor..." : "yolla"}
           </Button>
         </div>

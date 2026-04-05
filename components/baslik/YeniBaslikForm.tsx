@@ -206,7 +206,6 @@ export default function YeniBaslikForm({ initialTitle = "", draftId, initialCont
         <Button
           type="button"
           variant="outline"
-          size="sm"
           onClick={handleSaveDraft}
           disabled={isSubmitting || isSavingDraft}
         >

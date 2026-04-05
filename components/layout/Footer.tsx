@@ -9,7 +9,7 @@ export default function Footer() {
           <span>&middot;</span>
           <Link href="/istatistikler" className="hover:text-primary transition-colors">istatistikler</Link>
           <span>&middot;</span>
-          <Link href="/duyurular" className="hover:text-primary transition-colors">duyurular</Link>
+          <Link href="/duyurular" className="hover:text-primary transition-colors">olan biten</Link>
         </div>
         <div className="text-xs text-muted-foreground">
           sosyal sözlük &copy; {new Date().getFullYear()}

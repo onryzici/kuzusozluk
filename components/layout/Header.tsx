@@ -28,7 +28,7 @@ const navLinks = [
 ];
 
 const desktopOnlyLinks = [
-  { href: "/duyurular", label: "duyurular" },
+  { href: "/duyurular", label: "olan biten" },
   { href: "/rastgele", label: "rastgele" },
 ];
 

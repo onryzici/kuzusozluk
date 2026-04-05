@@ -16,7 +16,7 @@ export default async function DuyurularPage() {
     <div className="px-4 py-6">
       <div className="flex items-center gap-2 mb-4">
         <Megaphone className="h-4 w-4 text-primary" />
-        <h1 className="text-base font-medium text-foreground">duyurular</h1>
+        <h1 className="text-base font-medium text-foreground">olan biten</h1>
       </div>
 
       {announcements.length === 0 ? (

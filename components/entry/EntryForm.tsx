@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
@@ -10,11 +10,38 @@ type EntryFormProps = {
   topicSlug: string;
 };
 
+function getDraftKey(slug: string) {
+  return `draft:entry:${slug}`;
+}
+
 export default function EntryForm({ topicSlug }: EntryFormProps) {
   const router = useRouter();
-  const [content, setContent] = useState("");
+  const draftKey = getDraftKey(topicSlug);
+
+  const [content, setContent] = useState(() => {
+    try {
+      return localStorage.getItem(draftKey) || "";
+    } catch {
+      return "";
+    }
+  });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleContentChange = useCallback((val: string) => {
+    setContent(val);
+    try {
+      if (val) {
+        localStorage.setItem(draftKey, val);
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    } catch {}
+  }, [draftKey]);
+
+  function clearDraft() {
+    try { localStorage.removeItem(draftKey); } catch {}
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,6 +74,7 @@ export default function EntryForm({ topicSlug }: EntryFormProps) {
         setError(json.error.message);
       } else {
         setContent("");
+        clearDraft();
         toast.success("entry gönderildi");
         router.refresh();
         window.dispatchEvent(new Event("sidebar:refresh"));
@@ -65,7 +93,7 @@ export default function EntryForm({ topicSlug }: EntryFormProps) {
 
         <EntryEditor
           value={content}
-          onChange={setContent}
+          onChange={handleContentChange}
           placeholder="entry yaz..."
           rows={5}
           maxLength={5000}

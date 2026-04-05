@@ -1,17 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
 
+const DRAFT_KEY = "draft:yeni-baslik";
+
+function loadDraft(): { title: string; content: string } | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.title === "string" && typeof parsed.content === "string") {
+      return parsed;
+    }
+  } catch {}
+  return null;
+}
+
 export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: string }) {
   const router = useRouter();
-  const [title, setTitle] = useState(initialTitle);
-  const [content, setContent] = useState("");
+  const draft = typeof window !== "undefined" ? loadDraft() : null;
+  const [title, setTitle] = useState(initialTitle || draft?.title || "");
+  const [content, setContent] = useState(draft?.content || "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // draft kaydet
+  const saveDraft = useCallback((t: string, c: string) => {
+    try {
+      if (t || c) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ title: t, content: c }));
+      } else {
+        localStorage.removeItem(DRAFT_KEY);
+      }
+    } catch {}
+  }, []);
+
+  function handleTitleChange(newTitle: string) {
+    setTitle(newTitle);
+    saveDraft(newTitle, content);
+  }
+
+  function handleContentChange(newContent: string) {
+    setContent(newContent);
+    saveDraft(title, newContent);
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +116,7 @@ export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: s
         return;
       }
 
+      clearDraft();
       window.dispatchEvent(new Event("sidebar:refresh"));
       router.push(`/baslik/${slug}`);
       router.refresh();
@@ -97,7 +138,7 @@ export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: s
         <Input
           id="title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="başlık girin"
           className="text-sm"
           maxLength={200}
@@ -114,7 +155,7 @@ export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: s
         </label>
         <EntryEditor
           value={content}
-          onChange={setContent}
+          onChange={handleContentChange}
           placeholder="bu başlık hakkında ilk entry'yi yazın"
           rows={6}
           maxLength={5000}

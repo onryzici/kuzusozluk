@@ -7,6 +7,28 @@ type MesajBalonuProps = {
   isOwn: boolean;
 };
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function parseMesajContent(content: string): string {
+  let result = escapeHtml(content);
+
+  // http/https URL → tıklanabilir link
+  result = result.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    (url) =>
+      `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline break-all">${url}</a>`
+  );
+
+  return result;
+}
+
 export default function MesajBalonu({
   content,
   createdAt,
@@ -29,7 +51,10 @@ export default function MesajBalonu({
             {senderUsername}
           </p>
         )}
-        <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
+        <p
+          className="text-sm whitespace-pre-wrap break-words"
+          dangerouslySetInnerHTML={{ __html: parseMesajContent(content) }}
+        />
         <p
           className={`text-[10px] mt-1 ${
             isOwn ? "text-primary-foreground/60" : "text-muted-foreground"

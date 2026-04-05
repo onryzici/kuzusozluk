@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,23 @@ type BaslikYokSayfaProps = {
 
 export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }: BaslikYokSayfaProps) {
   const router = useRouter();
-  const [content, setContent] = useState("");
+  const draftKey = `draft:baslik-yok:${slug}`;
+  const [content, setContent] = useState(() => {
+    try { return localStorage.getItem(draftKey) || ""; } catch { return ""; }
+  });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleContentChange = useCallback((val: string) => {
+    setContent(val);
+    try {
+      if (val) { localStorage.setItem(draftKey, val); } else { localStorage.removeItem(draftKey); }
+    } catch {}
+  }, [draftKey]);
+
+  function clearDraft() {
+    try { localStorage.removeItem(draftKey); } catch {}
+  }
 
   // anket
   const [anketOpen, setAnketOpen] = useState(false);
@@ -97,6 +111,7 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
         } catch {}
       }
 
+      clearDraft();
       toast.success("başlık oluşturuldu");
       window.dispatchEvent(new Event("sidebar:refresh"));
       router.push(`/baslik/${actualSlug}`);
@@ -146,7 +161,7 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
 
             <EntryEditor
               value={content}
-              onChange={setContent}
+              onChange={handleContentChange}
               placeholder={`"${title}" hakkinda bilgi verin`}
               rows={6}
               maxLength={5000}

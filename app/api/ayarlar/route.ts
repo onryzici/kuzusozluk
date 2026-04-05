@@ -109,9 +109,23 @@ export async function DELETE(request: NextRequest) {
   const userId = session.user.id;
 
   // Delete all related data in correct order, then delete user
+  const entryIds = (await prisma.entry.findMany({
+    where: { authorId: userId },
+    select: { id: true },
+  })).map((e) => e.id);
+
   await prisma.$transaction([
-    prisma.vote.deleteMany({ where: { userId } }),
-    prisma.favorite.deleteMany({ where: { userId } }),
+    prisma.notification.deleteMany({ where: { OR: [{ userId }, { actorId: userId }] } }),
+    prisma.topicDraft.deleteMany({ where: { authorId: userId } }),
+    prisma.pollVote.deleteMany({ where: { userId } }),
+    prisma.poll.deleteMany({ where: { authorId: userId } }),
+    prisma.block.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } }),
+    prisma.ukde.deleteMany({ where: { OR: [{ authorId: userId }, { claimedById: userId }] } }),
+    prisma.topicFollow.deleteMany({ where: { userId } }),
+    prisma.report.deleteMany({ where: { OR: [{ reporterId: userId }, { entryId: { in: entryIds } }] } }),
+    prisma.comment.deleteMany({ where: { OR: [{ authorId: userId }, { entryId: { in: entryIds } }] } }),
+    prisma.vote.deleteMany({ where: { OR: [{ userId }, { entryId: { in: entryIds } }] } }),
+    prisma.favorite.deleteMany({ where: { OR: [{ userId }, { entryId: { in: entryIds } }] } }),
     prisma.follow.deleteMany({ where: { OR: [{ followerId: userId }, { followingId: userId }] } }),
     prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } }),
     prisma.entry.deleteMany({ where: { authorId: userId } }),

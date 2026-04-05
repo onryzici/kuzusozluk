@@ -102,7 +102,14 @@ export async function POST(request: NextRequest, { params }: Params) {
     },
   });
 
-  const totalVotes = updatedPoll!.options.reduce(
+  if (!updatedPoll) {
+    return NextResponse.json(
+      { success: false, error: { code: "NOT_FOUND", message: "anket bulunamadı" } },
+      { status: 404 }
+    );
+  }
+
+  const totalVotes = updatedPoll.options.reduce(
     (sum, opt) => sum + opt._count.votes,
     0
   );
@@ -112,7 +119,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     data: {
       totalVotes,
       userVotedOptionId: optionId,
-      options: updatedPoll!.options.map((opt) => ({
+      options: updatedPoll.options.map((opt) => ({
         id: opt.id,
         text: opt.text,
         voteCount: opt._count.votes,

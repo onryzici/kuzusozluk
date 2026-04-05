@@ -45,6 +45,7 @@ model User {
   blockedBy     Block[]        @relation("Blocked")
   ukdeler       Ukde[]         @relation("UkdeAuthor")
   claimedUkdeler Ukde[]        @relation("UkdeClaimer")
+  drafts         TopicDraft[]  @relation("DraftAuthor")
 
   @@index([username])
   @@index([karma])
@@ -326,6 +327,19 @@ model Block {
   blockedId String
 
   @@unique([blockerId, blockedId])
+}
+
+model TopicDraft {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(200)
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author    User     @relation("DraftAuthor", fields: [authorId], references: [id])
+  authorId  String
+
+  @@index([authorId, updatedAt])
 }
 
 model Ukde {

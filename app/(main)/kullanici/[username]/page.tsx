@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import TakipButon from "@/components/kullanici/TakipButon";
 import EngelleButon from "@/components/kullanici/EngelleButon";
 import Image from "next/image";
+import TaslaklarListesi from "@/components/baslik/TaslaklarListesi";
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -198,6 +199,8 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
     ) : (
       <p className="text-muted-foreground text-center py-12 text-sm">henuz favori yok.</p>
     );
+  } else if (sekme === "taslaklar" && isSelf) {
+    content = <TaslaklarListesi />;
   }
 
   return (
@@ -313,6 +316,18 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
         >
           takip ({user._count.following})
         </Link>
+        {isSelf && (
+          <Link
+            href={`/kullanici/${username}?sekme=taslaklar`}
+            className={`pb-2 text-xs font-medium transition-colors ${
+              sekme === "taslaklar"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            taslaklar
+          </Link>
+        )}
       </div>
 
       {content}

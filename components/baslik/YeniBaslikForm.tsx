@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
+import { toast } from "sonner";
 
 const DRAFT_KEY = "draft:yeni-baslik";
 
@@ -20,13 +21,20 @@ function loadDraft(): { title: string; content: string } | null {
   return null;
 }
 
-export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: string }) {
+type YeniBaslikFormProps = {
+  initialTitle?: string;
+  draftId?: string;
+  initialContent?: string;
+};
+
+export default function YeniBaslikForm({ initialTitle = "", draftId, initialContent }: YeniBaslikFormProps) {
   const router = useRouter();
   const draft = typeof window !== "undefined" ? loadDraft() : null;
   const [title, setTitle] = useState(initialTitle || draft?.title || "");
-  const [content, setContent] = useState(draft?.content || "");
+  const [content, setContent] = useState(initialContent || draft?.content || "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // draft kaydet
   const saveDraft = useCallback((t: string, c: string) => {
@@ -51,6 +59,37 @@ export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: s
 
   function clearDraft() {
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  }
+
+  async function handleSaveDraft() {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle || trimmedTitle.length < 3) {
+      setError("taslak için başlık en az 3 karakter olmalı.");
+      return;
+    }
+
+    setIsSavingDraft(true);
+    setError("");
+    try {
+      const url = draftId ? `/api/taslak/${draftId}` : "/api/taslak";
+      const method = draftId ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, content: content }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("taslak kaydedildi");
+        clearDraft();
+      } else {
+        setError(json.error?.message || "taslak kaydedilemedi");
+      }
+    } catch {
+      setError("bir hata oluştu");
+    } finally {
+      setIsSavingDraft(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -163,8 +202,17 @@ export default function YeniBaslikForm({ initialTitle = "" }: { initialTitle?: s
         />
       </div>
 
-      <div className="flex items-center justify-end">
-        <Button type="submit" disabled={isSubmitting}>
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleSaveDraft}
+          disabled={isSubmitting || isSavingDraft}
+        >
+          {isSavingDraft ? "kaydediliyor..." : "taslak kaydet"}
+        </Button>
+        <Button type="submit" disabled={isSubmitting || isSavingDraft}>
           {isSubmitting ? "gönderiliyor..." : "yolla"}
         </Button>
       </div>

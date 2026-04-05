@@ -3,10 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { deleteCache } from "@/lib/redis";
+import { toSlug } from "@/lib/utils/slug";
+import { sanitizeInput } from "@/lib/utils/security";
 
 const updateSchema = z.object({
   isLocked: z.boolean().optional(),
   isPinned: z.boolean().optional(),
+  title: z.string().min(3).max(200).optional(),
 });
 
 type Params = { params: Promise<{ slug: string }> };
@@ -30,9 +33,47 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  const data: { isLocked?: boolean; isPinned?: boolean } = {};
+  const data: { isLocked?: boolean; isPinned?: boolean; title?: string; slug?: string } = {};
   if (parsed.data.isLocked !== undefined) data.isLocked = parsed.data.isLocked;
   if (parsed.data.isPinned !== undefined) data.isPinned = parsed.data.isPinned;
+
+  if (parsed.data.title !== undefined) {
+    const newTitle = sanitizeInput(parsed.data.title).toLowerCase();
+
+    // aynı isimde başka başlık var mı kontrol et
+    const existingTitle = await prisma.topic.findFirst({
+      where: { title: newTitle, slug: { not: slug } },
+    });
+    if (existingTitle) {
+      return NextResponse.json(
+        { success: false, error: { code: "TITLE_EXISTS", message: "bu isimde bir başlık zaten var" } },
+        { status: 409 }
+      );
+    }
+
+    let newSlug = toSlug(newTitle);
+    let suffix = 1;
+    let slugExists = await prisma.topic.findFirst({
+      where: { slug: newSlug, id: { not: undefined } },
+    });
+    // mevcut slug ile aynıysa sorun yok
+    if (newSlug !== slug) {
+      const currentTopic = await prisma.topic.findUnique({ where: { slug }, select: { id: true } });
+      slugExists = await prisma.topic.findFirst({
+        where: { slug: newSlug, id: { not: currentTopic?.id } },
+      });
+      while (slugExists) {
+        suffix++;
+        newSlug = `${toSlug(newTitle)}-${suffix}`;
+        slugExists = await prisma.topic.findFirst({
+          where: { slug: newSlug, id: { not: currentTopic?.id } },
+        });
+      }
+    }
+
+    data.title = newTitle;
+    data.slug = newSlug;
+  }
 
   const updated = await prisma.topic.update({
     where: { slug },
@@ -41,6 +82,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   await deleteCache(`baslik:${slug}`);
+  if (data.slug && data.slug !== slug) {
+    await deleteCache(`baslik:${data.slug}`);
+    await deleteCache("gundem:list");
+  }
   return NextResponse.json({ success: true, data: updated });
 }
 

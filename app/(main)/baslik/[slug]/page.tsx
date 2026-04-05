@@ -186,6 +186,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
           {userRole === "ADMIN" && (
             <AdminBaslikIslemleri
               slug={slug}
+              title={topic.title}
               isLocked={topic.isLocked}
               isPinned={topic.isPinned}
             />

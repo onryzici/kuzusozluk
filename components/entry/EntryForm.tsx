@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import EntryEditor from "@/components/entry/EntryEditor";
@@ -27,6 +27,7 @@ export default function EntryForm({ topicSlug }: EntryFormProps) {
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleContentChange = useCallback((val: string) => {
     setContent(val);
@@ -88,12 +89,13 @@ export default function EntryForm({ topicSlug }: EntryFormProps) {
 
   return (
     <div className="mt-6 border-t pt-4">
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <EntryEditor
           value={content}
           onChange={handleContentChange}
+          onSubmit={() => formRef.current?.requestSubmit()}
           placeholder="entry yaz..."
           rows={5}
           maxLength={5000}

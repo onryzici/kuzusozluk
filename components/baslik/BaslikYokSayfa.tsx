@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ type BaslikYokSayfaProps = {
 
 export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }: BaslikYokSayfaProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const draftKey = `draft:baslik-yok:${slug}`;
   const [content, setContent] = useState(() => {
     try { return localStorage.getItem(draftKey) || ""; } catch { return ""; }
@@ -185,12 +186,13 @@ export default function BaslikYokSayfa({ title, slug, suggestions, isLoggedIn }:
             </Button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <EntryEditor
               value={content}
               onChange={handleContentChange}
+              onSubmit={() => formRef.current?.requestSubmit()}
               placeholder={`"${title}" hakkinda bilgi verin`}
               rows={6}
               maxLength={5000}

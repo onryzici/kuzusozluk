@@ -8,6 +8,8 @@ import {
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
+import { ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { parseEntryContent } from "@/lib/utils/entryParser";
 
 type UserSuggestion = {
@@ -18,6 +20,7 @@ type UserSuggestion = {
 type EntryEditorProps = {
   value: string;
   onChange: (value: string) => void;
+  onSubmit?: () => void;
   placeholder?: string;
   rows?: number;
   maxLength?: number;
@@ -27,14 +30,17 @@ type EntryEditorProps = {
 export default function EntryEditor({
   value,
   onChange,
+  onSubmit,
   placeholder = "entry yaz...",
   rows = 5,
   maxLength = 5000,
   disabled = false,
 }: EntryEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // @ mention state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -161,7 +167,38 @@ export default function EntryEditor({
   }
 
   function handleGorsel() {
-    insertAtCursor("[görsel: https://", "]");
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // reset input
+    e.target.value = "";
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("dosya boyutu en fazla 2MB olabilir");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/gorsel", { method: "POST", body: formData });
+      const json = await res.json();
+      if (json.success) {
+        insertAtCursor(`[görsel: ${json.data.url}]`, "");
+        toast.success("görsel yüklendi");
+      } else {
+        toast.error(json.error?.message || "görsel yüklenemedi");
+      }
+    } catch {
+      toast.error("görsel yüklenirken hata oluştu");
+    } finally {
+      setUploading(false);
+    }
   }
 
   // --- @ mention detection ---
@@ -270,6 +307,14 @@ export default function EntryEditor({
   }
 
   function handleTextareaKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // mobil klavyede "gönder" veya desktop'ta Enter (shift olmadan) → submit
+    if (e.key === "Enter" && !e.shiftKey && mentionQuery === null && onSubmit) {
+      // allow if not in mention dropdown
+      e.preventDefault();
+      onSubmit();
+      return;
+    }
+
     if (mentionQuery !== null && mentionUsers.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -323,9 +368,10 @@ export default function EntryEditor({
     { divider: true },
     { label: "link", onClick: handleLink, title: "link ekle" },
     {
-      label: "gorsel",
+      label: uploading ? "yukluyor..." : "gorsel",
       onClick: handleGorsel,
-      title: "gorsel ekle",
+      title: "telefon arsivinden veya bilgisayardan gorsel yukle",
+      disabled: uploading,
     },
   ];
 
@@ -348,7 +394,7 @@ export default function EntryEditor({
               type="button"
               title={btn.title}
               onClick={btn.onClick}
-              disabled={disabled || preview}
+              disabled={disabled || preview || btn.disabled}
               className={`px-1.5 py-0.5 text-xs rounded transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed ${
                 btn.bold ? "font-bold" : ""
               } ${btn.italic ? "italic" : ""}`}
@@ -388,8 +434,16 @@ export default function EntryEditor({
               placeholder={placeholder}
               rows={rows}
               maxLength={maxLength}
-              disabled={disabled}
+              disabled={disabled || uploading}
+              enterKeyHint={onSubmit ? "send" : "enter"}
               className="flex field-sizing-content min-h-16 w-full rounded-b-md border border-input bg-transparent px-2.5 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 rounded-t-none resize-y dark:bg-input/30"
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleFileUpload}
+              className="hidden"
             />
 
             {/* @ mention dropdown */}

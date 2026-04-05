@@ -317,7 +317,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
           takip ({user._count.following})
         </Link>
         <Link
-          href={`/baslik/${encodeURIComponent(user.username + " (yazar)")}`}
+          href={`/baslik/${user.username}-yazar?q=${encodeURIComponent(user.username + " (yazar)")}`}
           className="pb-2 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground"
         >
           nick6

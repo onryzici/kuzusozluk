@@ -87,6 +87,13 @@ function UserMenu({ session }: { session: any }) {
             <HelpCircle className="h-3 w-3" /> sss
           </Link>
         </DropdownMenuItem>
+        {role === "CO_MOD" && (
+          <DropdownMenuItem>
+            <Link href="/co-mod" className="flex items-center gap-2 w-full text-xs text-primary">
+              <Shield className="h-3 w-3" /> co-mod paneli
+            </Link>
+          </DropdownMenuItem>
+        )}
         {role === "ADMIN" && (
           <DropdownMenuItem>
             <Link href="/admin" className="flex items-center gap-2 w-full text-xs text-primary">

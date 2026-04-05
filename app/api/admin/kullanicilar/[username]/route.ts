@@ -5,19 +5,22 @@ import { z } from "zod";
 
 const updateSchema = z.object({
   isBanned: z.boolean().optional(),
-  role: z.enum(["CAYLAK", "USER", "AUTHOR", "MODERATOR", "ADMIN"]).optional(),
+  role: z.enum(["CAYLAK", "USER", "AUTHOR", "CO_MOD", "MODERATOR", "ADMIN"]).optional(),
 });
 
 type Params = { params: Promise<{ username: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  const sessionRole = session?.user?.role;
+  if (!session?.user || !["ADMIN", "CO_MOD"].includes(sessionRole as string)) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "Yetkiniz yok" } },
       { status: 403 }
     );
   }
+
+  const isCoMod = sessionRole === "CO_MOD";
 
   const { username } = await params;
   const user = await prisma.user.findUnique({ where: { username } });
@@ -28,10 +31,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  // Admin kendini banlayamasin
   if (user.id === session.user.id) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "Kendinizi duzenleyemezsiniz" } },
+      { status: 403 }
+    );
+  }
+
+  // CO_MOD sadece CAYLAK ve AUTHOR kullanıcıları düzenleyebilir
+  if (isCoMod && !["CAYLAK", "AUTHOR"].includes(user.role)) {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN", message: "bu kullanıcıyı düzenleme yetkiniz yok" } },
       { status: 403 }
     );
   }
@@ -46,7 +56,23 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  const data: { isBanned?: boolean; role?: "CAYLAK" | "USER" | "AUTHOR" | "MODERATOR" | "ADMIN" } = {};
+  // CO_MOD banlama yapamaz, sadece CAYLAK/AUTHOR arası rol değiştirebilir
+  if (isCoMod) {
+    if (parsed.data.isBanned !== undefined) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "banlama yetkiniz yok" } },
+        { status: 403 }
+      );
+    }
+    if (parsed.data.role && !["CAYLAK", "AUTHOR"].includes(parsed.data.role)) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "sadece çaylak ve yazar rolleri atayabilirsiniz" } },
+        { status: 403 }
+      );
+    }
+  }
+
+  const data: { isBanned?: boolean; role?: "CAYLAK" | "USER" | "AUTHOR" | "CO_MOD" | "MODERATOR" | "ADMIN" } = {};
   if (parsed.data.isBanned !== undefined) data.isBanned = parsed.data.isBanned;
   if (parsed.data.role !== undefined) data.role = parsed.data.role;
 

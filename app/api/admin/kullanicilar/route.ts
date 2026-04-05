@@ -4,26 +4,37 @@ import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  const role = session?.user?.role;
+  if (!session?.user || !["ADMIN", "CO_MOD"].includes(role as string)) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "Yetkiniz yok" } },
       { status: 403 }
     );
   }
 
+  const isCoMod = role === "CO_MOD";
+
   const { searchParams } = request.nextUrl;
   const page = Math.max(1, parseInt(searchParams.get("sayfa") || "1"));
   const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("boyut") || "20")));
   const search = searchParams.get("q") || "";
 
-  const where = search
-    ? {
-        OR: [
-          { username: { contains: search, mode: "insensitive" as const } },
-          { email: { contains: search, mode: "insensitive" as const } },
-        ],
-      }
+  // CO_MOD sadece CAYLAK ve AUTHOR görebilir
+  const roleFilter = isCoMod
+    ? { role: { in: ["CAYLAK" as const, "AUTHOR" as const] } }
     : {};
+
+  const where = {
+    ...roleFilter,
+    ...(search
+      ? {
+          OR: [
+            { username: { contains: search, mode: "insensitive" as const } },
+            { email: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({

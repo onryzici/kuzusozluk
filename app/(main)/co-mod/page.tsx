@@ -15,9 +15,9 @@ type User = {
   createdAt: string;
 };
 
-const ROLES = ["CAYLAK", "USER", "AUTHOR", "CO_MOD", "MODERATOR", "ADMIN"] as const;
+const COMOD_ROLES = ["CAYLAK", "AUTHOR"] as const;
 
-export default function KullanicilarPage() {
+export default function CoModPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -32,6 +32,10 @@ export default function KullanicilarPage() {
       const params = new URLSearchParams({ sayfa: String(p), boyut: "20" });
       if (q) params.set("q", q);
       const res = await fetch(`/api/admin/kullanicilar?${params}`);
+      if (res.status === 403) {
+        setLoading(false);
+        return;
+      }
       const json = await res.json();
       if (json.success) {
         setUsers(json.data);
@@ -46,27 +50,6 @@ export default function KullanicilarPage() {
   useEffect(() => {
     fetchUsers(page, search);
   }, [page, search]);
-
-  async function toggleBan(username: string, isBanned: boolean) {
-    setUpdating(username);
-    try {
-      const res = await fetch(`/api/admin/kullanicilar/${username}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isBanned: !isBanned }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.username === username ? { ...u, isBanned: !isBanned } : u
-          )
-        );
-      }
-    } finally {
-      setUpdating(null);
-    }
-  }
 
   async function changeRole(username: string, role: string) {
     setUpdating(username);
@@ -92,11 +75,15 @@ export default function KullanicilarPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">kullanicilar ({total})</h1>
-        <Link href="/admin" className="text-sm text-muted-foreground hover:underline">
-          admin paneli
-        </Link>
+        <h1 className="text-xl font-semibold">co-mod paneli</h1>
+        <span className="text-xs text-muted-foreground">
+          {total} kullanici
+        </span>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        caylak ve yazar kullanicilarin rollerini degistirebilirsiniz.
+      </p>
 
       <input
         type="text"
@@ -124,7 +111,6 @@ export default function KullanicilarPage() {
                   <th className="py-2 pr-4">durum</th>
                   <th className="py-2 pr-4">entry</th>
                   <th className="py-2 pr-4">karma</th>
-                  <th className="py-2">islemler</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,9 +123,6 @@ export default function KullanicilarPage() {
                       >
                         {user.username}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">
-                        {user.email}
-                      </span>
                     </td>
                     <td className="py-2 pr-4">
                       <select
@@ -148,16 +131,16 @@ export default function KullanicilarPage() {
                         disabled={updating === user.username}
                         className="text-xs border rounded px-1 py-0.5 bg-background disabled:opacity-50"
                       >
-                        {ROLES.map((r) => (
+                        {COMOD_ROLES.map((r) => (
                           <option key={r} value={r}>
-                            {r.toLowerCase()}
+                            {r === "CAYLAK" ? "çaylak" : "yazar"}
                           </option>
                         ))}
                       </select>
                     </td>
                     <td className="py-2 pr-4">
                       {user.isBanned ? (
-                        <span className="text-xs text-red-600 font-medium">banlandi</span>
+                        <span className="text-xs text-red-600 font-medium">banlı</span>
                       ) : user.isActive ? (
                         <span className="text-xs text-green-600">aktif</span>
                       ) : (
@@ -166,31 +149,6 @@ export default function KullanicilarPage() {
                     </td>
                     <td className="py-2 pr-4">{user.entryCount}</td>
                     <td className="py-2 pr-4">{user.karma}</td>
-                    <td className="py-2">
-                      <button
-                        onClick={() => toggleBan(user.username, user.isBanned)}
-                        disabled={updating === user.username}
-                        className={`text-xs px-2 py-1 rounded disabled:opacity-50 ${
-                          user.isBanned
-                            ? "bg-green-600 text-white hover:bg-green-700"
-                            : "bg-red-600 text-white hover:bg-red-700"
-                        }`}
-                      >
-                        {user.isBanned ? "bani kaldir" : "banla"}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!window.confirm(`${user.username} hesabını ve tüm içeriklerini kalıcı olarak silmek istediğinize emin misiniz?`)) return;
-                          const res = await fetch(`/api/admin/kullanicilar/${user.username}`, { method: "DELETE" });
-                          const json = await res.json();
-                          if (json.success) fetchUsers();
-                          else alert(json.error?.message || "hata");
-                        }}
-                        className="text-[11px] px-2 py-1 rounded bg-red-900 text-white hover:bg-red-800"
-                      >
-                        sil
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>

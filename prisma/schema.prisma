@@ -55,6 +55,7 @@ enum Role {
   CAYLAK
   USER
   AUTHOR
+  CO_MOD
   MODERATOR
   ADMIN
 }

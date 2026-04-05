@@ -19,9 +19,9 @@ export async function GET(request: NextRequest) {
   const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("boyut") || "20")));
   const search = searchParams.get("q") || "";
 
-  // CO_MOD sadece CAYLAK ve AUTHOR görebilir
+  // CO_MOD sadece CAYLAK, USER ve AUTHOR görebilir
   const roleFilter = isCoMod
-    ? { role: { in: ["CAYLAK" as const, "AUTHOR" as const] } }
+    ? { role: { in: ["CAYLAK" as const, "USER" as const, "AUTHOR" as const] } }
     : {};
 
   const where = {

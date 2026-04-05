@@ -15,7 +15,7 @@ type User = {
   createdAt: string;
 };
 
-const COMOD_ROLES = ["CAYLAK", "AUTHOR"] as const;
+const COMOD_ROLES = ["CAYLAK", "USER", "AUTHOR"] as const;
 
 export default function CoModPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -82,7 +82,7 @@ export default function CoModPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        caylak ve yazar kullanicilarin rollerini degistirebilirsiniz.
+        caylak, user ve yazar kullanicilarin rollerini degistirebilirsiniz.
       </p>
 
       <input
@@ -133,7 +133,7 @@ export default function CoModPage() {
                       >
                         {COMOD_ROLES.map((r) => (
                           <option key={r} value={r}>
-                            {r === "CAYLAK" ? "çaylak" : "yazar"}
+                            {r === "CAYLAK" ? "çaylak" : r === "USER" ? "user" : "yazar"}
                           </option>
                         ))}
                       </select>

@@ -38,8 +38,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  // CO_MOD sadece CAYLAK ve AUTHOR kullanıcıları düzenleyebilir
-  if (isCoMod && !["CAYLAK", "AUTHOR"].includes(user.role)) {
+  // CO_MOD sadece CAYLAK, USER ve AUTHOR kullanıcıları düzenleyebilir
+  if (isCoMod && !["CAYLAK", "USER", "AUTHOR"].includes(user.role)) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "bu kullanıcıyı düzenleme yetkiniz yok" } },
       { status: 403 }
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 403 }
       );
     }
-    if (parsed.data.role && !["CAYLAK", "AUTHOR"].includes(parsed.data.role)) {
+    if (parsed.data.role && !["CAYLAK", "USER", "AUTHOR"].includes(parsed.data.role)) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "sadece çaylak ve yazar rolleri atayabilirsiniz" } },
         { status: 403 }

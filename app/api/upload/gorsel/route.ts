@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
@@ -84,9 +85,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: { url: result.secure_url } });
     }
 
-    // base64 fallback
-    const base64 = buffer.toString("base64");
-    const url = `data:${file.type};base64,${base64}`;
+    // DB'ye kaydet, kısa URL döndür
+    const upload = await prisma.upload.create({
+      data: {
+        mimeType: file.type,
+        data: buffer,
+        uploaderId: (session.user as any).id,
+      },
+      select: { id: true },
+    });
+    const url = `/api/gorsel/${upload.id}`;
     return NextResponse.json({ success: true, data: { url } });
   } catch {
     return NextResponse.json(

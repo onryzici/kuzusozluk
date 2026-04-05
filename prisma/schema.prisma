@@ -46,6 +46,7 @@ model User {
   ukdeler       Ukde[]         @relation("UkdeAuthor")
   claimedUkdeler Ukde[]        @relation("UkdeClaimer")
   drafts         TopicDraft[]  @relation("DraftAuthor")
+  uploads        Upload[]      @relation("Uploader")
 
   @@index([username])
   @@index([karma])
@@ -341,6 +342,18 @@ model TopicDraft {
   authorId  String
 
   @@index([authorId, updatedAt])
+}
+
+model Upload {
+  id        String   @id @default(cuid())
+  mimeType  String   @db.VarChar(50)
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  uploader   User   @relation("Uploader", fields: [uploaderId], references: [id])
+  uploaderId String
+
+  @@index([uploaderId])
 }
 
 model Ukde {

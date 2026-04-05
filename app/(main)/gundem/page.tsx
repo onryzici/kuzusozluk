@@ -67,7 +67,7 @@ export default async function GundemSayfa() {
           href="/bebe"
           className="text-xs text-primary hover:underline"
         >
-          daha fazla &rarr; bugünün en beğenilen entryleri (bebe)
+          daha fazla &rarr; dün açılan başlıklar
         </Link>
       </div>
     </div>

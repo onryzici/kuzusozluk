@@ -37,9 +37,9 @@ const faqItems = [
       'bir basligin detay sayfasina girdikten sonra basligin yanindaki "takip et" butonuna tiklayarak o basligi takip edebilirsiniz. takip ettiginiz basliklara yeni entry yazildiginda bildirim alirsiniz.',
   },
   {
-    question: "bebe nedir?",
+    question: "dün nedir?",
     answer:
-      'bebe, "bugünün en beğenilen entryleri" anlamına gelir. en çok beğeni alan entryler bebe listesinde yer alır.',
+      '"dün" sayfası, bir önceki gün açılan başlıkları listeler. hangi konuların dün açıldığını görmek için kullanılır.',
   },
   {
     question: "nasil admin olunur?",

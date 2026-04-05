@@ -19,7 +19,7 @@ import ThemeToggle from "@/components/shared/ThemeToggle";
 const navLinks = [
   { href: "/", label: "bugün" },
   { href: "/gundem", label: "gündem" },
-  { href: "/bebe", label: "bebe" },
+  { href: "/bebe", label: "dün" },
   { href: "/takip", label: "takip" },
   { href: "/son", label: "akış" },
   { href: "/ukde", label: "ukde" },

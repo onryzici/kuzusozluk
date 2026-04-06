@@ -15,8 +15,9 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session.user as any).id as string;
 
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
   const count = await prisma.notification.count({
-    where: { userId, isRead: false },
+    where: { userId, isRead: false, createdAt: { gte: twoDaysAgo } },
   });
 
   return NextResponse.json({ success: true, data: { count } });

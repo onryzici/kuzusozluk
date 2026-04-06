@@ -97,7 +97,6 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
   const pageSize = 10;
   const siralama = sira === "yeni" || sira === "populer" ? sira : "eski";
 
-  // Sıralama ayarı
   const orderBy =
     siralama === "yeni"
       ? { createdAt: "desc" as const }
@@ -105,41 +104,27 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         ? { upvotes: "desc" as const }
         : { createdAt: "asc" as const };
 
-  // Check if current user follows this topic
-  let isFollowingTopic = false;
-  if (session?.user) {
-    try {
-      const topicFollow = await prisma.topicFollow.findUnique({
-        where: {
-          userId_topicId: {
-            userId: (session.user as any).id,
-            topicId: topic.id,
-          },
-        },
-      });
-      isFollowingTopic = !!topicFollow;
-    } catch {
-      // TopicFollow tablosu henüz yoksa sessizce devam et
-    }
-  }
-
-  // çaylak entry'lerini sadece admin/mod görebilir
   const userRole = (session?.user as any)?.role;
   const canSeeCaylak = userRole === "ADMIN" || userRole === "MODERATOR";
   const currentUserId = (session?.user as any)?.id || null;
 
-  // engellenen kullanıcıların entrylerini gizle
-  let blockedUsers: string[] = [];
-  if (currentUserId) {
-    try {
-      blockedUsers = (await prisma.block.findMany({
-        where: { blockerId: currentUserId },
-        select: { blockedId: true },
-      })).map((b) => b.blockedId);
-    } catch {
-      // Block tablosu henüz yoksa sessizce devam et
-    }
-  }
+  // Tüm bağımsız sorguları paralel çalıştır
+  const [topicFollowResult, blockedResult] = await Promise.all([
+    currentUserId
+      ? prisma.topicFollow.findUnique({
+          where: { userId_topicId: { userId: currentUserId, topicId: topic.id } },
+        }).catch(() => null)
+      : Promise.resolve(null),
+    currentUserId
+      ? prisma.block.findMany({
+          where: { blockerId: currentUserId },
+          select: { blockedId: true },
+        }).catch(() => [])
+      : Promise.resolve([]),
+  ]);
+
+  const isFollowingTopic = !!topicFollowResult;
+  const blockedUsers = blockedResult.map((b: { blockedId: string }) => b.blockedId);
 
   const entryWhere = {
     topicId: topic.id,

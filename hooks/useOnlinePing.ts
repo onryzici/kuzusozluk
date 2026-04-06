@@ -14,7 +14,7 @@ export function useOnlinePing() {
 
     const interval = setInterval(() => {
       fetch("/api/kullanici/ping", { method: "POST" }).catch(() => {});
-    }, 60 * 1000); // every 60 seconds
+    }, 120 * 1000); // every 2 minutes
 
     return () => clearInterval(interval);
   }, [session?.user]);

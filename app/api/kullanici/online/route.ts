@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
+import { getCache, setCache } from "@/lib/redis";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const ip = request.headers.get("x-forwarded-for") || "unknown";
-    const { allowed } = await checkRateLimit(rateLimiters.genel, ip);
-    if (!allowed) {
-      return NextResponse.json(
-        { success: false, error: { code: "RATE_LIMIT", message: "Çok fazla istek" } },
-        { status: 429 }
-      );
+    // 30 saniye cache
+    const cached = await getCache<unknown>("online:users");
+    if (cached) {
+      return NextResponse.json({ success: true, data: cached });
     }
+
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     const users = await prisma.user.findMany({
@@ -24,6 +22,8 @@ export async function GET(request: Request) {
       },
       orderBy: { lastSeen: "desc" },
     });
+
+    await setCache("online:users", users, 30);
 
     return NextResponse.json({ success: true, data: users });
   } catch {

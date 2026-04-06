@@ -117,6 +117,19 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     if (updatedTopic.entryCount <= 0) {
       await prisma.topicFollow.deleteMany({ where: { topicId: updatedTopic.id } });
       await prisma.topic.delete({ where: { id: updatedTopic.id } });
+    } else {
+      // son kalan entry'nin tarihine göre başlığın updatedAt'ini güncelle
+      const lastEntry = await prisma.entry.findFirst({
+        where: { topicId: entry.topicId },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (lastEntry) {
+        await prisma.topic.update({
+          where: { id: entry.topicId },
+          data: { updatedAt: lastEntry.createdAt },
+        });
+      }
     }
 
     await prisma.user.update({

@@ -1,19 +1,14 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 const protectedPaths = ["/ayarlar", "/mesajlar", "/baslik/yeni", "/admin"];
 
-function isVercelHost(host: string) {
-  return host.includes("vercel.app");
-}
-
-export default auth(async (req: NextRequest & { auth: unknown }) => {
+export default auth(async (req) => {
   const host = req.headers.get("host") || "";
   const { pathname } = req.nextUrl;
 
   // Vercel'den gelen tüm istekleri kuzusozluk.com'a yönlendir
-  if (isVercelHost(host)) {
+  if (host.includes("vercel.app")) {
     return NextResponse.redirect(`https://kuzusozluk.com${pathname}`, 301);
   }
 
@@ -50,6 +45,20 @@ export default auth(async (req: NextRequest & { auth: unknown }) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.*).*)",
+    "/ayarlar/:path*",
+    "/mesajlar/:path*",
+    "/baslik/yeni",
+    "/admin/:path*",
+    "/engellendi",
+    "/",
+    "/baslik/:path*",
+    "/kullanici/:path*",
+    "/giris",
+    "/gundem",
+    "/bebe",
+    "/son",
+    "/takip",
+    "/ara",
+    "/api/:path*",
   ],
 };

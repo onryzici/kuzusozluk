@@ -6,6 +6,7 @@ import { kayitSchema } from "@/lib/validations/auth";
 import { sendEmail, isSmtpConfigured } from "@/lib/email";
 import { createNotification } from "@/lib/notifications";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
+import { logAction } from "@/lib/auditLog";
 
 export async function POST(request: Request) {
   try {
@@ -100,6 +101,9 @@ export async function POST(request: Request) {
       </div>
       `
     );
+
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
+    await logAction("REGISTER", user.id, `yeni kayit: ${username}`, ip);
 
     // tüm adminlere yeni üye bildirimi
     const admins = await prisma.user.findMany({

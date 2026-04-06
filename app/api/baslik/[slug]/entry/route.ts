@@ -7,6 +7,7 @@ import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 import { sanitizeInput, checkYasakliKelime } from "@/lib/utils/security";
 import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
 import { processMentions, createNotification } from "@/lib/notifications";
+import { logAction } from "@/lib/auditLog";
 
 export async function POST(
   request: NextRequest,
@@ -111,6 +112,9 @@ export async function POST(
       actorId: session.user.id,
     });
   }
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
+  await logAction("ENTRY_CREATE", session.user.id, `"${topic.title}" basligina entry yazildi`, ip);
 
   return NextResponse.json({ success: true, data: entry }, { status: 201 });
 }

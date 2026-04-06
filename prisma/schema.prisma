@@ -47,6 +47,7 @@ model User {
   claimedUkdeler Ukde[]        @relation("UkdeClaimer")
   drafts         TopicDraft[]  @relation("DraftAuthor")
   uploads        Upload[]      @relation("Uploader")
+  auditLogs      AuditLog[]
 
   @@index([username])
   @@index([karma])
@@ -369,4 +370,19 @@ model Ukde {
   topicSlug String?
 
   @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   @db.VarChar(50)
+  detail    String   @db.Text
+  ip        String?  @db.VarChar(45)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([action])
 }

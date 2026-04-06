@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { entryGuncelleSchema } from "@/lib/validations/entry";
 import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
+import { logAction } from "@/lib/auditLog";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -68,6 +69,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       author: { select: { id: true, username: true, avatarUrl: true } },
     },
   });
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
+  await logAction("ENTRY_EDIT", session.user.id, `entry duzenlendi: ${id}`, ip);
 
   return NextResponse.json({ success: true, data: updated });
 }
@@ -142,6 +146,9 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       { status: 500 }
     );
   }
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
+  await logAction("ENTRY_DELETE", session.user.id, `entry silindi: ${id} (baslik: ${entry.topicId})`, ip);
 
   return NextResponse.json({ success: true, data: { id } });
 }

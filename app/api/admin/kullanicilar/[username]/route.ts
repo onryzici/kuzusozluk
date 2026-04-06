@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
+import { logAction } from "@/lib/auditLog";
 
 const updateSchema = z.object({
   isBanned: z.boolean().optional(),
@@ -87,6 +88,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     },
   });
 
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
+  if (parsed.data.isBanned !== undefined) {
+    await logAction(parsed.data.isBanned ? "USER_BAN" : "USER_UNBAN", session.user.id, `${username} ${parsed.data.isBanned ? "banlandi" : "ban kaldirildi"}`, ip);
+  }
+  if (parsed.data.role) {
+    await logAction("USER_ROLE_CHANGE", session.user.id, `${username} rolu degistirildi: ${parsed.data.role}`, ip);
+  }
+
   return NextResponse.json({ success: true, data: updated });
 }
 
@@ -139,6 +148,9 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     prisma.entry.deleteMany({ where: { authorId: user.id } }),
     prisma.user.delete({ where: { id: user.id } }),
   ]);
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
+  await logAction("USER_DELETE", session.user.id, `${username} hesabi silindi`, ip);
 
   return NextResponse.json({ success: true, data: { deleted: true } });
 }

@@ -9,6 +9,7 @@ import { getCache, setCache, deleteCache, TTL } from "@/lib/redis";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 import { checkYasakliKelime, sanitizeInput } from "@/lib/utils/security";
 import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
+import { logAction } from "@/lib/auditLog";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -141,6 +142,9 @@ export async function POST(request: NextRequest) {
     where: { title, topicSlug: null },
     data: { topicSlug: slug },
   });
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
+  await logAction("TOPIC_CREATE", session.user.id, `baslik acildi: "${title}"`, ip);
 
   return NextResponse.json({ success: true, data: topic }, { status: 201 });
 }

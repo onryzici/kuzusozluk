@@ -60,6 +60,12 @@ export default async function AdminPage() {
         >
           yasakli kelimeler
         </Link>
+        <Link
+          href="/admin/log"
+          className="text-sm px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
+        >
+          log kayitlari
+        </Link>
       </div>
     </div>
   );

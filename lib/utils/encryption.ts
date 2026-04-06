@@ -1,10 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from "crypto";
 
 const ALGORITHM = "aes-256-gcm";
-const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
-if (!SECRET) {
-  throw new Error("NEXTAUTH_SECRET veya AUTH_SECRET ortam değişkeni ayarlanmalı");
-}
+const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "";
 
 /**
  * iki kullanıcı arasındaki konuşma için deterministik anahtar üretir

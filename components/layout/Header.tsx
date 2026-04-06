@@ -18,7 +18,7 @@ import ThemeToggle from "@/components/shared/ThemeToggle";
 
 const navLinks = [
   { href: "/", label: "bugün" },
-  { href: "/gundem", label: "gündem" },
+  { href: "/gundem", label: "tüm" },
   { href: "/bebe", label: "dün" },
   { href: "/takip", label: "takip" },
   { href: "/son", label: "akış" },
@@ -167,6 +167,11 @@ export default function Header() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => {
+                  if (link.href === "/") {
+                    window.dispatchEvent(new Event("sidebar:refresh"));
+                  }
+                }}
                 className={`relative text-sm sm:text-[13px] whitespace-nowrap transition-colors px-3 sm:px-0 py-2 sm:py-0 ${
                   isActive
                     ? "text-foreground font-semibold sm:font-normal sm:text-primary"

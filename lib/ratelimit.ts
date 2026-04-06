@@ -29,6 +29,6 @@ export async function checkRateLimit(
     const result = await limiter.limit(identifier);
     return { allowed: result.success, remaining: result.remaining };
   } catch {
-    return { allowed: true }; // Fail open if Redis unavailable
+    return { allowed: false }; // Fail closed if Redis unavailable
   }
 }

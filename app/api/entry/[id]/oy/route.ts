@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 import { createNotification } from "@/lib/notifications";
+import { checkBanned } from "@/lib/utils/banCheck";
 
 const oySchema = z.object({
   type: z.enum(["UP", "DOWN"]),
@@ -19,6 +20,9 @@ export async function POST(request: NextRequest, { params }: Params) {
       { status: 401 }
     );
   }
+
+  const banned = await checkBanned(session.user.id);
+  if (banned) return banned;
 
   const { allowed } = await checkRateLimit(rateLimiters.oyVer, session.user.id);
   if (!allowed) {

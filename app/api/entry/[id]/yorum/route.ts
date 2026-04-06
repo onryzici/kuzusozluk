@@ -3,8 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { yorumSchema } from "@/lib/validations/yorum";
 import { createNotification, processMentions } from "@/lib/notifications";
-import { checkYasakliKelime } from "@/lib/utils/security";
+import { checkYasakliKelime, sanitizeInput } from "@/lib/utils/security";
 import { lowercasePreserveLinks } from "@/lib/utils/lowercasePreserveLinks";
+import { checkBanned } from "@/lib/utils/banCheck";
 
 export async function GET(
   _request: NextRequest,
@@ -52,6 +53,9 @@ export async function POST(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id as string;
 
+    const banned = await checkBanned(userId);
+    if (banned) return banned;
+
     const body = await request.json();
     const parsed = yorumSchema.safeParse(body);
     if (!parsed.success) {
@@ -86,7 +90,7 @@ export async function POST(
 
     const comment = await prisma.comment.create({
       data: {
-        content: lowercasePreserveLinks(parsed.data.content),
+        content: lowercasePreserveLinks(sanitizeInput(parsed.data.content)),
         authorId: userId,
         entryId,
       },

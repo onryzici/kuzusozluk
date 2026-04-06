@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { mesajSchema } from "@/lib/validations/mesaj";
 import { checkYasakliKelime } from "@/lib/utils/security";
 import { encryptMessage, decryptMessage } from "@/lib/utils/encryption";
+import { checkBanned } from "@/lib/utils/banCheck";
+import { checkRateLimit, rateLimiters } from "@/lib/ratelimit";
 
 // GET /api/mesaj — List conversations for current user (grouped by other user)
 export async function GET() {
@@ -99,6 +101,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const senderId = (session.user as { id: string }).id;
+
+  const banned = await checkBanned(senderId);
+  if (banned) return banned;
+
+  const { allowed } = await checkRateLimit(rateLimiters.genel, senderId);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: { code: "RATE_LIMITED", message: "Çok fazla mesaj gönderdiniz" } },
+      { status: 429 }
+    );
+  }
+
   const body = await request.json();
   const parsed = mesajSchema.safeParse(body);
   if (!parsed.success) {
@@ -111,7 +126,6 @@ export async function POST(request: NextRequest) {
 
   const content = parsed.data.content;
   const receiverUsername = parsed.data.receiverUsername;
-  const senderId = (session.user as { id: string }).id;
   const senderUsername = (session.user as { username: string }).username;
 
   if (receiverUsername === senderUsername) {
@@ -138,6 +152,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, error: { code: "USER_NOT_FOUND", message: "Kullanıcı bulunamadı" } },
       { status: 404 }
+    );
+  }
+
+  // Engelleme kontrolü
+  const blocked = await prisma.block.findFirst({
+    where: {
+      OR: [
+        { blockerId: senderId, blockedId: receiver.id },
+        { blockerId: receiver.id, blockedId: senderId },
+      ],
+    },
+  });
+  if (blocked) {
+    return NextResponse.json(
+      { success: false, error: { code: "BLOCKED", message: "Bu kullanıcıya mesaj gönderemezsiniz" } },
+      { status: 403 }
     );
   }
 

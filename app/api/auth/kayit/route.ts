@@ -102,7 +102,6 @@ export async function POST(request: Request) {
       `
     );
 
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
     await logAction("REGISTER", user.id, `yeni kayit: ${username}`, ip);
 
     // tüm adminlere yeni üye bildirimi

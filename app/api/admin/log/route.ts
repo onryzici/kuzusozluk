@@ -19,7 +19,11 @@ export async function GET(request: NextRequest) {
   const action = searchParams.get("action") || undefined;
   const username = searchParams.get("username") || undefined;
 
-  const where: Record<string, unknown> = {};
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+  const where: Record<string, unknown> = {
+    createdAt: { gte: twoDaysAgo },
+  };
   if (action) where.action = action;
   if (username) where.user = { username };
 
@@ -37,6 +41,11 @@ export async function GET(request: NextRequest) {
     }),
     prisma.auditLog.count({ where }),
   ]);
+
+  // arka planda 2 günden eski logları temizle
+  prisma.auditLog.deleteMany({
+    where: { createdAt: { lt: twoDaysAgo } },
+  }).catch(() => {});
 
   return NextResponse.json({
     success: true,

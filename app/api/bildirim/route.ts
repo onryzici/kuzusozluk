@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 
-// GET /api/bildirim — List notifications for current user
+// GET /api/bildirim — List notifications for current user (son 2 gün)
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
@@ -16,9 +16,11 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session.user as any).id as string;
 
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
   const [notifications, unreadCount] = await Promise.all([
     prisma.notification.findMany({
-      where: { userId },
+      where: { userId, createdAt: { gte: twoDaysAgo } },
       orderBy: { createdAt: "desc" },
       take: 30,
       include: {
@@ -28,9 +30,14 @@ export async function GET() {
       },
     }),
     prisma.notification.count({
-      where: { userId, isRead: false },
+      where: { userId, isRead: false, createdAt: { gte: twoDaysAgo } },
     }),
   ]);
+
+  // arka planda eski bildirimleri temizle (fire-and-forget)
+  prisma.notification.deleteMany({
+    where: { userId, createdAt: { lt: twoDaysAgo } },
+  }).catch(() => {});
 
   return NextResponse.json({
     success: true,

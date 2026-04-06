@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { mesajSchema } from "@/lib/validations/mesaj";
-import { createNotification } from "@/lib/notifications";
 import { checkYasakliKelime } from "@/lib/utils/security";
 import { encryptMessage, decryptMessage } from "@/lib/utils/encryption";
 
@@ -155,15 +154,6 @@ export async function POST(request: NextRequest) {
         select: { id: true, username: true, avatarUrl: true },
       },
     },
-  });
-
-  // Notify receiver about the new message
-  await createNotification({
-    type: "MESSAGE",
-    content: "size bir mesaj gonderdi",
-    link: `/mesajlar/${senderUsername}`,
-    userId: receiver.id,
-    actorId: senderId,
   });
 
   return NextResponse.json({ success: true, data: mesaj }, { status: 201 });

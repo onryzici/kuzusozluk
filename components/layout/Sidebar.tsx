@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 
-type GundemItem = {
+type BaslikItem = {
   id: string;
   title: string;
   slug: string;
@@ -14,41 +14,54 @@ type GundemItem = {
   isPinned?: boolean;
 };
 
+type Meta = {
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+};
+
 export default function Sidebar() {
-  const [gundem, setGundem] = useState<GundemItem[]>([]);
+  const [basliklar, setBasliklar] = useState<BaslikItem[]>([]);
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const pathname = usePathname();
+  const pageSize = 40;
 
-  const fetchGundem = useCallback(() => {
+  const fetchBasliklar = useCallback((p: number) => {
     setLoading(true);
-    fetch("/api/baslik?siralama=son&boyut=40&t=" + Date.now(), { cache: "no-store" })
+    fetch(`/api/baslik?siralama=yeni&boyut=${pageSize}&sayfa=${p}&t=` + Date.now(), { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
-        if (json.success) setGundem(json.data);
+        if (json.success) {
+          setBasliklar(json.data);
+          setMeta(json.meta);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    fetchGundem();
-    // only fetch on initial mount, not on every pathname change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchBasliklar(page);
+  }, [page, fetchBasliklar]);
 
   useEffect(() => {
-    function handleRefresh() { fetchGundem(); }
+    function handleRefresh() { fetchBasliklar(page); }
     window.addEventListener("sidebar:refresh", handleRefresh);
     return () => window.removeEventListener("sidebar:refresh", handleRefresh);
-  }, [fetchGundem]);
+  }, [fetchBasliklar, page]);
+
+  const totalPages = meta ? Math.ceil(meta.total / pageSize) : 1;
 
   return (
     <aside className="hidden lg:block w-72 shrink-0 h-full overflow-y-auto border-r border-border bg-background">
       <div className="p-2">
         <div className="flex items-center justify-between px-2 py-2">
-          <span className="text-xs text-muted-foreground">bugün</span>
+          <span className="text-xs text-muted-foreground">tüm</span>
           <button
-            onClick={fetchGundem}
+            onClick={() => fetchBasliklar(page)}
             className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title="yenile"
           >
@@ -57,8 +70,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="divide-y divide-border/20">
-          {/* sabitlenmiş başlıklar önce, sonra geri kalanlar */}
-          {[...gundem].sort((a, b) => {
+          {[...basliklar].sort((a, b) => {
             if (a.isPinned && !b.isPinned) return -1;
             if (!a.isPinned && b.isPinned) return 1;
             return 0;
@@ -83,8 +95,30 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {gundem.length === 0 && (
+        {basliklar.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-8">yükleniyor...</p>
+        )}
+
+        {meta && totalPages > 1 && (
+          <div className="flex items-center justify-between px-2 py-2 mt-1 border-t border-border/30">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
       </div>
     </aside>

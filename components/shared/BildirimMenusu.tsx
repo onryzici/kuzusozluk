@@ -37,18 +37,25 @@ export default function BildirimMenusu() {
 
   const openDropdown = useCallback(async () => {
     setIsOpen(true);
-    setIsLoading(true);
 
-    try {
-      const res = await fetch("/api/bildirim");
-      const data = await res.json();
-      if (data.success) {
-        setNotifications(data.data.notifications);
-      }
-    } catch {}
-    setIsLoading(false);
+    // Daha önce yüklenmişse anında göster, arka planda güncelle
+    if (notifications.length > 0) {
+      // Arka planda taze veri çek
+      fetch("/api/bildirim").then(r => r.json()).then(data => {
+        if (data.success) setNotifications(data.data.notifications);
+      }).catch(() => {});
+    } else {
+      // İlk açılış — loading göster
+      setIsLoading(true);
+      try {
+        const res = await fetch("/api/bildirim");
+        const data = await res.json();
+        if (data.success) setNotifications(data.data.notifications);
+      } catch {}
+      setIsLoading(false);
+    }
 
-    // okundu işaretlemeyi arka planda yap (beklemeden)
+    // okundu işaretlemeyi arka planda yap
     clearNotifCount();
     fetch("/api/bildirim", {
       method: "PATCH",
@@ -56,7 +63,7 @@ export default function BildirimMenusu() {
       body: JSON.stringify({ markAllRead: true }),
     }).catch(() => {});
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  }, [clearNotifCount]);
+  }, [clearNotifCount, notifications.length]);
 
   useEffect(() => {
     if (!isOpen) return;

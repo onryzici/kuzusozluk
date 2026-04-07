@@ -48,7 +48,7 @@ export default async function BildirimlerPage() {
   });
 
   return (
-    <div className="w-full">
+    <div className="w-full px-4 lg:px-8 py-6">
       <h1 className="text-lg font-semibold mb-4">bildirimler</h1>
 
       {notifications.length === 0 ? (

@@ -172,7 +172,7 @@ export default function Header() {
                     window.dispatchEvent(new Event("sidebar:refresh"));
                   }
                 }}
-                className={`relative text-sm sm:text-[13px] whitespace-nowrap transition-colors px-3 sm:px-0 py-2 sm:py-0 ${
+                className={`relative text-sm sm:text-[13px] whitespace-nowrap px-3 sm:px-0 py-2 sm:py-0 ${
                   isActive
                     ? "text-foreground font-semibold sm:font-normal sm:text-primary"
                     : "text-muted-foreground hover:text-primary"

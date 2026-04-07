@@ -48,7 +48,7 @@ export default function Sidebar() {
           <span className="text-xs text-muted-foreground">bugün</span>
           <button
             onClick={fetchGundem}
-            className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
             title="yenile"
           >
             <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
@@ -64,7 +64,7 @@ export default function Sidebar() {
             <Link
               key={item.id}
               href={`/baslik/${item.slug}`}
-              className={`flex items-center justify-between py-[6px] px-2 text-sm rounded-sm transition-colors leading-snug ${
+              className={`flex items-center justify-between py-[6px] px-2 text-sm rounded-sm leading-snug ${
                 pathname === `/baslik/${item.slug}`
                   ? "bg-accent text-primary"
                   : "text-foreground/80 hover:bg-accent/70"

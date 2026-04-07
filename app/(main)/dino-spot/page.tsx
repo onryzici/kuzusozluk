@@ -2,7 +2,6 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState, useCallback } from "react";
-import { redirect } from "next/navigation";
 import DinoOyun from "@/components/oyun/DinoOyun";
 import { Trophy, Gamepad2 } from "lucide-react";
 
@@ -18,14 +17,6 @@ export default function DinoSpotSayfa() {
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [isNewBest, setIsNewBest] = useState(false);
-
-  const role = (session?.user as any)?.role;
-
-  useEffect(() => {
-    if (status === "authenticated" && role !== "ADMIN") {
-      redirect("/");
-    }
-  }, [status, role]);
 
   const fetchScores = useCallback(async () => {
     try {
@@ -64,10 +55,6 @@ export default function DinoSpotSayfa() {
         yukleniyor...
       </div>
     );
-  }
-
-  if (!session?.user || role !== "ADMIN") {
-    return null;
   }
 
   return (
@@ -135,10 +122,6 @@ export default function DinoSpotSayfa() {
             ))
           )}
         </div>
-      </div>
-
-      <div className="mt-4 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-600 dark:text-yellow-400">
-        test modu — sadece adminler gorebilir. canliya alinca herkes erisebilecek.
       </div>
     </div>
   );

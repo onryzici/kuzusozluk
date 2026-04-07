@@ -194,19 +194,17 @@ export default function Header() {
               {link.label}
             </Link>
           ))}
-          {(session?.user as any)?.role === "ADMIN" && (
-            <Link
-              href="/dino-spot"
-              className={`flex items-center gap-1 text-sm sm:text-[13px] whitespace-nowrap transition-colors px-3 sm:px-0 py-2 sm:py-0 ${
-                pathname === "/dino-spot"
-                  ? "text-foreground font-semibold sm:font-normal sm:text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              <Gamepad2 className="h-3 w-3" />
-              dino-tml
-            </Link>
-          )}
+          <Link
+            href="/dino-spot"
+            className={`flex items-center gap-1 text-sm sm:text-[13px] whitespace-nowrap transition-colors px-3 sm:px-0 py-2 sm:py-0 ${
+              pathname === "/dino-spot"
+                ? "text-foreground font-semibold sm:font-normal sm:text-primary"
+                : "text-muted-foreground hover:text-primary"
+            }`}
+          >
+            <Gamepad2 className="h-3 w-3" />
+            dino-tml
+          </Link>
         </div>
       </div>
     </header>

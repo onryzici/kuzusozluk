@@ -48,6 +48,7 @@ model User {
   drafts         TopicDraft[]  @relation("DraftAuthor")
   uploads        Upload[]      @relation("Uploader")
   auditLogs      AuditLog[]
+  gameScores     GameScore[]
 
   @@index([username])
   @@index([karma])
@@ -370,6 +371,18 @@ model Ukde {
   topicSlug String?
 
   @@index([createdAt])
+}
+
+model GameScore {
+  id        String   @id @default(cuid())
+  score     Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+
+  @@index([score])
+  @@index([userId])
 }
 
 model AuditLog {

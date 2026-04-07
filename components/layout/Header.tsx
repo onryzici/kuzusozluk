@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LogIn, LogOut, User, Settings, Mail, Shield, PenLine, BarChart3, HelpCircle, Circle } from "lucide-react";
+import { LogIn, LogOut, User, Settings, Mail, Shield, PenLine, BarChart3, HelpCircle, Circle, Gamepad2 } from "lucide-react";
 import AramaKutusu from "@/components/shared/AramaKutusu";
 import MesajBildirim from "@/components/shared/MesajBildirim";
 import BildirimMenusu from "@/components/shared/BildirimMenusu";
@@ -194,6 +194,19 @@ export default function Header() {
               {link.label}
             </Link>
           ))}
+          {(session?.user as any)?.role === "ADMIN" && (
+            <Link
+              href="/dino-spot"
+              className={`flex items-center gap-1 text-sm sm:text-[13px] whitespace-nowrap transition-colors px-3 sm:px-0 py-2 sm:py-0 ${
+                pathname === "/dino-spot"
+                  ? "text-foreground font-semibold sm:font-normal sm:text-primary"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <Gamepad2 className="h-3 w-3" />
+              dino-spot
+            </Link>
+          )}
         </div>
       </div>
     </header>

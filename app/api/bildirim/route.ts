@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
+import { getCache, setCache, deleteCache } from "@/lib/redis";
 
 // GET /api/bildirim — List notifications for current user (son 2 gün)
 export async function GET() {
@@ -15,6 +16,13 @@ export async function GET() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session.user as any).id as string;
+
+  // 15 saniye cache
+  const cacheKey = `bildirim:${userId}`;
+  const cached = await getCache<{ notifications: unknown[]; unreadCount: number }>(cacheKey);
+  if (cached) {
+    return NextResponse.json({ success: true, data: cached });
+  }
 
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
@@ -34,15 +42,15 @@ export async function GET() {
     }),
   ]);
 
+  const result = { notifications, unreadCount };
+  await setCache(cacheKey, result, 15);
+
   // arka planda eski bildirimleri temizle (fire-and-forget)
   prisma.notification.deleteMany({
     where: { userId, createdAt: { lt: twoDaysAgo } },
   }).catch(() => {});
 
-  return NextResponse.json({
-    success: true,
-    data: { notifications, unreadCount },
-  });
+  return NextResponse.json({ success: true, data: result });
 }
 
 const patchSchema = z.object({
@@ -85,6 +93,9 @@ export async function PATCH(request: NextRequest) {
       data: { isRead: true },
     });
   }
+
+  // cache'i temizle
+  deleteCache(`bildirim:${userId}`).catch(() => {});
 
   return NextResponse.json({ success: true, data: { updated: true } });
 }

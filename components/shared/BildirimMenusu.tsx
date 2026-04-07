@@ -33,9 +33,12 @@ export default function BildirimMenusu() {
   const { unreadNotif, clearNotifCount } = usePolling();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const openDropdown = useCallback(async () => {
     setIsOpen(true);
+    setIsLoading(true);
+
     try {
       const res = await fetch("/api/bildirim");
       const data = await res.json();
@@ -43,17 +46,16 @@ export default function BildirimMenusu() {
         setNotifications(data.data.notifications);
       }
     } catch {}
+    setIsLoading(false);
 
-    // otomatik okundu yap
-    try {
-      await fetch("/api/bildirim", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markAllRead: true }),
-      });
-      clearNotifCount();
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch {}
+    // okundu işaretlemeyi arka planda yap (beklemeden)
+    clearNotifCount();
+    fetch("/api/bildirim", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markAllRead: true }),
+    }).catch(() => {});
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   }, [clearNotifCount]);
 
   useEffect(() => {
@@ -88,7 +90,11 @@ export default function BildirimMenusu() {
             <span className="text-xs font-medium">bildirimler</span>
           </div>
 
-          {notifications.length === 0 ? (
+          {isLoading ? (
+            <div className="px-3 py-8 text-center text-xs text-muted-foreground animate-pulse">
+              yukleniyor...
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="px-3 py-8 text-center text-xs text-muted-foreground">
               henuz bildirim yok
             </div>

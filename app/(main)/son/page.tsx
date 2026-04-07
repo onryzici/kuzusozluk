@@ -9,22 +9,25 @@ export const metadata = {
 };
 
 export default async function SonSayfa() {
-  const session = await auth();
-  const currentUserId = (session?.user as any)?.id || null;
+  // auth ve DB sorgusunu paralel çalıştır
+  const [session, entries] = await Promise.all([
+    auth(),
+    prisma.entry.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      include: {
+        author: {
+          select: { id: true, username: true, avatarUrl: true, role: true },
+        },
+        topic: {
+          select: { title: true, slug: true },
+        },
+        _count: { select: { comments: true } },
+      },
+    }),
+  ]);
 
-  const entries = await prisma.entry.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 30,
-    include: {
-      author: {
-        select: { id: true, username: true, avatarUrl: true, role: true },
-      },
-      topic: {
-        select: { title: true, slug: true },
-      },
-      _count: { select: { comments: true } },
-    },
-  });
+  const currentUserId = (session?.user as any)?.id || null;
 
   return (
     <div className="w-full px-4 lg:px-8 py-6">

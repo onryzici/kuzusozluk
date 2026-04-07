@@ -18,9 +18,10 @@ type Props = {
 export default async function KullaniciProfil({ params, searchParams }: Props) {
   const { username } = await params;
   const { sekme = "entryler" } = await searchParams;
-  const session = await auth();
 
-  const user = await prisma.user.findUnique({
+  const [session, user] = await Promise.all([
+    auth(),
+    prisma.user.findUnique({
     where: { username },
     select: {
       id: true,
@@ -35,7 +36,8 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
       createdAt: true,
       _count: { select: { following: true, followers: true } },
     },
-  });
+  }),
+  ]);
 
   if (!user) notFound();
 

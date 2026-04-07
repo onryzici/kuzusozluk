@@ -56,30 +56,30 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
   const { slug } = await params;
   const { sayfa, q, sira } = await searchParams;
 
-  const topic = await prisma.topic.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      isLocked: true,
-      isPinned: true,
-      createdAt: true,
-    },
-  });
+  // topic ve auth'u paralel çalıştır
+  const [topic, session] = await Promise.all([
+    prisma.topic.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        isLocked: true,
+        isPinned: true,
+        createdAt: true,
+      },
+    }),
+    auth(),
+  ]);
 
   // Başlık yoksa — Ekşi tarzı "bu başlık yok" sayfası
   if (!topic) {
-    const session = await auth();
-
-    // Benzer başlık önerileri
     const suggestions = await prisma.topic.findMany({
       where: { slug: { contains: slug.split("-")[0] } },
       take: 5,
       select: { title: true, slug: true, entryCount: true },
     });
 
-    // Orijinal başlık metnini q parametresinden veya slug'dan türet
     const originalTitle = q || slug.replace(/-/g, " ");
 
     return (
@@ -91,8 +91,6 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
       />
     );
   }
-
-  const session = await auth();
   const page = Math.max(1, parseInt(sayfa || "1"));
   const pageSize = 10;
   const siralama = sira === "yeni" || sira === "populer" ? sira : "eski";

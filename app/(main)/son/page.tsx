@@ -14,7 +14,7 @@ export default async function SonSayfa() {
     auth(),
     prisma.entry.findMany({
       orderBy: { createdAt: "desc" },
-      take: 30,
+      take: 10,
       include: {
         author: {
           select: { id: true, username: true, avatarUrl: true, role: true },

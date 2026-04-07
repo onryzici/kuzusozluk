@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatZamanOnce } from "@/lib/utils/format";
 import { AtSign, MessageSquare, ThumbsUp, UserPlus, Mail, Bell } from "lucide-react";
+import BildirimTemizle from "@/components/shared/BildirimTemizle";
 
 const typeIcons: Record<string, typeof Bell> = {
   MENTION: AtSign,
@@ -49,6 +50,7 @@ export default async function BildirimlerPage() {
 
   return (
     <div className="w-full max-w-3xl px-4 lg:px-8 py-6">
+      <BildirimTemizle />
       <h1 className="text-lg font-semibold mb-4">bildirimler</h1>
 
       {notifications.length === 0 ? (

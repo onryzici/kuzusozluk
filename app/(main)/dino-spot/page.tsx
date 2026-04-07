@@ -77,9 +77,9 @@ export default function DinoSpotSayfa() {
       <div className="flex items-center gap-3 mb-6">
         <Gamepad2 className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-lg font-bold">dino-spot</h1>
+          <h1 className="text-lg font-bold">dino-tml</h1>
           <p className="text-xs text-muted-foreground">
-            kuzu kosuyor. engelleri atla, skor kas, yazarlar arasinda birinci ol.
+            tml kosuyor. tombul siselerden kac, skor kas, yazarlar arasinda birinci ol.
           </p>
         </div>
       </div>

@@ -204,7 +204,7 @@ export default function Header() {
               }`}
             >
               <Gamepad2 className="h-3 w-3" />
-              dino-spot
+              dino-tml
             </Link>
           )}
         </div>

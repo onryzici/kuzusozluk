@@ -2,17 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import dynamic from "next/dynamic";
 import BaslikDetay from "@/components/baslik/BaslikDetay";
 import BaslikTakipButon from "@/components/baslik/BaslikTakipButon";
+import EntryKart from "@/components/entry/EntryKart";
+import EntryForm from "@/components/entry/EntryForm";
 import Sayfalama from "@/components/shared/Sayfalama";
 import BaslikYokSayfa from "@/components/baslik/BaslikYokSayfa";
 import SiralamaSekmeleri from "@/components/entry/SiralamaSekmeleri";
-
-const EntryKart = dynamic(() => import("@/components/entry/EntryKart"));
-const EntryForm = dynamic(() => import("@/components/entry/EntryForm"));
-const AdminBaslikIslemleri = dynamic(() => import("@/components/baslik/AdminBaslikIslemleri"));
-const AnketGoster = dynamic(() => import("@/components/anket/AnketGoster"));
+import AdminBaslikIslemleri from "@/components/baslik/AdminBaslikIslemleri";
+import AnketGoster from "@/components/anket/AnketGoster";
 import { auth } from "@/lib/auth";
 
 type Props = {

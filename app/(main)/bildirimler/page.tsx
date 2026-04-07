@@ -30,12 +30,6 @@ export default async function BildirimlerPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session.user as any).id as string;
 
-  // Mark all as read on page load
-  await prisma.notification.updateMany({
-    where: { userId, isRead: false },
-    data: { isRead: true },
-  });
-
   const notifications = await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -46,6 +40,12 @@ export default async function BildirimlerPage() {
       },
     },
   });
+
+  // Okunmamışları arka planda okundu yap (sayfayı yavaşlatmasın)
+  prisma.notification.updateMany({
+    where: { userId, isRead: false },
+    data: { isRead: true },
+  }).catch(() => {});
 
   return (
     <div className="w-full max-w-3xl px-4 lg:px-8 py-6">
@@ -62,7 +62,12 @@ export default async function BildirimlerPage() {
             const label = typeLabels[n.type] || "";
 
             return (
-              <div key={n.id} className="flex items-start gap-3 px-4 py-3">
+              <div
+                key={n.id}
+                className={`flex items-start gap-3 px-4 py-3 ${
+                  !n.isRead ? "bg-primary/5" : ""
+                }`}
+              >
                 <div className="shrink-0 mt-0.5 p-1.5 rounded-full bg-muted">
                   <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>

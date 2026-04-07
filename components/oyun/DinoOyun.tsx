@@ -2,11 +2,12 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 
-type Obstacle = { x: number; width: number; height: number; type: "kaktus" | "kus" };
+type ObstacleType = "kaktus-kucuk" | "kaktus-buyuk" | "kaktus-ikili" | "kus";
+type Obstacle = { x: number; width: number; height: number; type: ObstacleType };
 
 const GROUND_Y = 200;
-const DINO_W = 40;
-const DINO_H = 44;
+const SPRITE_W = 44;
+const SPRITE_H = 48;
 const DINO_X = 50;
 const GRAVITY = 0.6;
 const JUMP_FORCE = -11;
@@ -15,14 +16,57 @@ const MAX_SPEED = 12;
 const CANVAS_W = 700;
 const CANVAS_H = 250;
 
+const KAKTUS_TYPES: ObstacleType[] = ["kaktus-kucuk", "kaktus-buyuk", "kaktus-ikili"];
+
 type GameState = "idle" | "playing" | "dead";
 
 type Props = {
   onGameOver: (score: number) => void;
 };
 
+// Preload images
+function loadImage(src: string): HTMLImageElement {
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+
 export default function DinoOyun({ onGameOver }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imagesRef = useRef<Record<string, HTMLImageElement>>({});
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+
+  // Load all sprites once
+  useEffect(() => {
+    const srcs: Record<string, string> = {
+      "dino-kosma-1": "/oyun/dino-kosma-1.png",
+      "dino-kosma-2": "/oyun/dino-kosma-2.png",
+      "dino-ziplama": "/oyun/dino-ziplama.png",
+      "dino-egilme-1": "/oyun/dino-egilme-1.png",
+      "dino-egilme-2": "/oyun/dino-egilme-2.png",
+      "dino-olu": "/oyun/dino-olu.png",
+      "kaktus-kucuk": "/oyun/kaktus-kucuk.png",
+      "kaktus-buyuk": "/oyun/kaktus-buyuk.png",
+      "kaktus-ikili": "/oyun/kaktus-ikili.png",
+    };
+
+    let loaded = 0;
+    const total = Object.keys(srcs).length;
+
+    for (const [key, src] of Object.entries(srcs)) {
+      const img = loadImage(src);
+      img.onload = () => {
+        loaded++;
+        if (loaded >= total) setImagesLoaded(true);
+      };
+      img.onerror = () => {
+        loaded++;
+        if (loaded >= total) setImagesLoaded(true);
+      };
+      imagesRef.current[key] = img;
+    }
+  }, []);
+
   const stateRef = useRef<{
     gameState: GameState;
     dinoY: number;
@@ -35,7 +79,7 @@ export default function DinoOyun({ onGameOver }: Props) {
     isDucking: boolean;
   }>({
     gameState: "idle",
-    dinoY: GROUND_Y - DINO_H,
+    dinoY: GROUND_Y - SPRITE_H,
     velY: 0,
     obstacles: [],
     score: 0,
@@ -52,7 +96,7 @@ export default function DinoOyun({ onGameOver }: Props) {
 
   const resetGame = useCallback(() => {
     const s = stateRef.current;
-    s.dinoY = GROUND_Y - DINO_H;
+    s.dinoY = GROUND_Y - SPRITE_H;
     s.velY = 0;
     s.obstacles = [];
     s.score = 0;
@@ -71,7 +115,7 @@ export default function DinoOyun({ onGameOver }: Props) {
       resetGame();
       return;
     }
-    if (s.dinoY >= GROUND_Y - DINO_H - 1) {
+    if (s.dinoY >= GROUND_Y - SPRITE_H - 1) {
       s.velY = JUMP_FORCE;
     }
   }, [resetGame]);
@@ -119,18 +163,21 @@ export default function DinoOyun({ onGameOver }: Props) {
 
   // Game loop
   useEffect(() => {
+    if (!imagesLoaded) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
+    const imgs = imagesRef.current;
 
     function spawnObstacle() {
       const s = stateRef.current;
-      const type = Math.random() > 0.8 ? "kus" : "kaktus";
-      const obs: Obstacle =
-        type === "kaktus"
-          ? { x: CANVAS_W + 20, width: 18 + Math.random() * 14, height: 30 + Math.random() * 20, type }
-          : { x: CANVAS_W + 20, width: 30, height: 24, type };
-      s.obstacles.push(obs);
+      const isKus = Math.random() > 0.8;
+      if (isKus) {
+        s.obstacles.push({ x: CANVAS_W + 20, width: 30, height: 24, type: "kus" });
+      } else {
+        const type = KAKTUS_TYPES[Math.floor(Math.random() * KAKTUS_TYPES.length)];
+        s.obstacles.push({ x: CANVAS_W + 20, width: SPRITE_W, height: SPRITE_H, type });
+      }
     }
 
     function update() {
@@ -145,8 +192,8 @@ export default function DinoOyun({ onGameOver }: Props) {
       // Dino physics
       s.velY += GRAVITY;
       s.dinoY += s.velY;
-      if (s.dinoY >= GROUND_Y - DINO_H) {
-        s.dinoY = GROUND_Y - DINO_H;
+      if (s.dinoY >= GROUND_Y - SPRITE_H) {
+        s.dinoY = GROUND_Y - SPRITE_H;
         s.velY = 0;
       }
 
@@ -157,8 +204,8 @@ export default function DinoOyun({ onGameOver }: Props) {
         spawnObstacle();
       }
 
-      // Move obstacles & collision
-      const dinoH = s.isDucking ? DINO_H * 0.6 : DINO_H;
+      // Collision
+      const dinoH = s.isDucking ? SPRITE_H * 0.6 : SPRITE_H;
       const dinoTop = s.isDucking ? GROUND_Y - dinoH : s.dinoY;
 
       for (let i = s.obstacles.length - 1; i >= 0; i--) {
@@ -169,15 +216,26 @@ export default function DinoOyun({ onGameOver }: Props) {
         }
 
         const o = s.obstacles[i];
-        const obsTop = o.type === "kus" ? GROUND_Y - 60 : GROUND_Y - o.height;
-        const obsBottom = o.type === "kus" ? GROUND_Y - 60 + o.height : GROUND_Y;
+        let obsTop: number, obsBottom: number, obsLeft: number, obsRight: number;
 
-        // AABB collision
+        if (o.type === "kus") {
+          obsTop = GROUND_Y - 60;
+          obsBottom = GROUND_Y - 60 + o.height;
+          obsLeft = o.x;
+          obsRight = o.x + o.width;
+        } else {
+          obsTop = GROUND_Y - SPRITE_H;
+          obsBottom = GROUND_Y;
+          obsLeft = o.x;
+          obsRight = o.x + SPRITE_W;
+        }
+
+        // AABB collision with padding
         if (
-          DINO_X + DINO_W - 8 > o.x + 4 &&
-          DINO_X + 8 < o.x + o.width - 4 &&
-          dinoTop + dinoH - 4 > obsTop + 4 &&
-          dinoTop + 4 < obsBottom - 4
+          DINO_X + SPRITE_W - 10 > obsLeft + 6 &&
+          DINO_X + 10 < obsRight - 6 &&
+          dinoTop + dinoH - 6 > obsTop + 6 &&
+          dinoTop + 6 < obsBottom - 6
         ) {
           s.gameState = "dead";
           setGameState("dead");
@@ -194,8 +252,9 @@ export default function DinoOyun({ onGameOver }: Props) {
       const s = stateRef.current;
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-      // Sky gradient
       const isDark = document.documentElement.classList.contains("dark");
+
+      // Background
       if (isDark) {
         ctx.fillStyle = "#1a1a2e";
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
@@ -221,83 +280,48 @@ export default function DinoOyun({ onGameOver }: Props) {
       // Ground
       ctx.fillStyle = isDark ? "#444466" : "#999";
       ctx.fillRect(0, GROUND_Y, CANVAS_W, 1);
-      // Ground texture
       ctx.fillStyle = isDark ? "#333355" : "#ccc";
       for (let x = -s.groundOffset; x < CANVAS_W; x += 20) {
         ctx.fillRect(x, GROUND_Y + 4, 8, 1);
         ctx.fillRect(x + 12, GROUND_Y + 8, 5, 1);
       }
 
-      // Dino
-      const dinoH = s.isDucking ? DINO_H * 0.6 : DINO_H;
-      const dinoTop = s.isDucking ? GROUND_Y - dinoH : s.dinoY;
-      const dinoColor = isDark ? "#7fcc7f" : "#535353";
-      ctx.fillStyle = dinoColor;
-
-      // Body
-      ctx.fillRect(DINO_X + 4, dinoTop + 4, DINO_W - 8, dinoH - 8);
-      // Head
-      if (!s.isDucking) {
-        ctx.fillRect(DINO_X + 16, dinoTop - 4, 22, 16);
-        // Eye
-        ctx.fillStyle = isDark ? "#1a1a2e" : "#fff";
-        ctx.fillRect(DINO_X + 30, dinoTop - 1, 5, 5);
-        ctx.fillStyle = isDark ? "#fff" : "#000";
-        ctx.fillRect(DINO_X + 32, dinoTop + 1, 2, 2);
-      } else {
-        ctx.fillRect(DINO_X + 8, dinoTop - 2, 30, 12);
-        ctx.fillStyle = isDark ? "#1a1a2e" : "#fff";
-        ctx.fillRect(DINO_X + 32, dinoTop + 1, 4, 4);
-        ctx.fillStyle = isDark ? "#fff" : "#000";
-        ctx.fillRect(DINO_X + 34, dinoTop + 2, 2, 2);
-      }
-
-      // Legs (animated)
-      ctx.fillStyle = dinoColor;
-      const legFrame = Math.floor(s.frame / 4) % 2;
-      if (s.dinoY < GROUND_Y - DINO_H - 1) {
-        // In air — legs spread
-        ctx.fillRect(DINO_X + 8, dinoTop + dinoH - 4, 6, 8);
-        ctx.fillRect(DINO_X + 22, dinoTop + dinoH - 4, 6, 8);
+      // Dino sprite
+      let dinoSprite: string;
+      if (s.gameState === "dead") {
+        dinoSprite = "dino-olu";
+      } else if (s.dinoY < GROUND_Y - SPRITE_H - 1) {
+        dinoSprite = "dino-ziplama";
       } else if (s.isDucking) {
-        if (legFrame === 0) {
-          ctx.fillRect(DINO_X + 6, dinoTop + dinoH - 4, 6, 8);
-        } else {
-          ctx.fillRect(DINO_X + 20, dinoTop + dinoH - 4, 6, 8);
-        }
+        dinoSprite = Math.floor(s.frame / 6) % 2 === 0 ? "dino-egilme-1" : "dino-egilme-2";
       } else {
-        if (legFrame === 0) {
-          ctx.fillRect(DINO_X + 10, dinoTop + dinoH - 4, 6, 8);
-        } else {
-          ctx.fillRect(DINO_X + 24, dinoTop + dinoH - 4, 6, 8);
-        }
+        dinoSprite = Math.floor(s.frame / 6) % 2 === 0 ? "dino-kosma-1" : "dino-kosma-2";
       }
 
-      // Tail
-      ctx.fillRect(DINO_X - 2, dinoTop + 8, 8, 6);
+      const dinoImg = imgs[dinoSprite];
+      if (dinoImg && dinoImg.complete && dinoImg.naturalWidth > 0) {
+        const drawH = s.isDucking ? SPRITE_H : SPRITE_H;
+        const drawY = s.isDucking ? GROUND_Y - SPRITE_H : s.dinoY;
+        ctx.drawImage(dinoImg, DINO_X, drawY, SPRITE_W, drawH);
+      }
 
       // Obstacles
       for (const o of s.obstacles) {
-        if (o.type === "kaktus") {
-          ctx.fillStyle = isDark ? "#66bb6a" : "#2d6a4f";
-          ctx.fillRect(o.x, GROUND_Y - o.height, o.width, o.height);
-          // Cactus arms
-          ctx.fillRect(o.x - 4, GROUND_Y - o.height * 0.7, 5, 4);
-          ctx.fillRect(o.x + o.width - 1, GROUND_Y - o.height * 0.5, 5, 4);
-          // Spikes
-          ctx.fillStyle = isDark ? "#81c784" : "#3d8b6a";
-          ctx.fillRect(o.x + 2, GROUND_Y - o.height - 3, 3, 3);
-        } else {
-          // Bird
+        if (o.type === "kus") {
+          // Kuş — dummy rectangles (aynı kalsın dedin)
           const birdY = GROUND_Y - 60;
           ctx.fillStyle = isDark ? "#b39ddb" : "#795548";
           ctx.fillRect(o.x, birdY, o.width, 10);
-          // Wings (animated)
           const wingUp = Math.floor(s.frame / 6) % 2 === 0;
           ctx.fillRect(o.x + 6, birdY + (wingUp ? -8 : 8), 16, 6);
-          // Beak
           ctx.fillStyle = isDark ? "#ffcc80" : "#ff8f00";
           ctx.fillRect(o.x + o.width, birdY + 2, 6, 4);
+        } else {
+          // Kaktüs sprite
+          const kaktusImg = imgs[o.type];
+          if (kaktusImg && kaktusImg.complete && kaktusImg.naturalWidth > 0) {
+            ctx.drawImage(kaktusImg, o.x, GROUND_Y - SPRITE_H, SPRITE_W, SPRITE_H);
+          }
         }
       }
 
@@ -312,7 +336,7 @@ export default function DinoOyun({ onGameOver }: Props) {
         ctx.fillText(`HI ${highScore.toString().padStart(5, "0")}`, CANVAS_W - 80, 24);
       }
 
-      // Game state overlays
+      // Overlays
       if (s.gameState === "idle") {
         ctx.fillStyle = isDark ? "#aaa" : "#666";
         ctx.font = "16px monospace";
@@ -339,7 +363,7 @@ export default function DinoOyun({ onGameOver }: Props) {
 
     animRef.current = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animRef.current);
-  }, [highScore, onGameOver]);
+  }, [imagesLoaded, highScore, onGameOver]);
 
   return (
     <div className="flex flex-col items-center gap-3">

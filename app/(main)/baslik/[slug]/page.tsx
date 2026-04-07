@@ -106,8 +106,8 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
   const canSeeCaylak = userRole === "ADMIN" || userRole === "MODERATOR";
   const currentUserId = (session?.user as any)?.id || null;
 
-  // Tüm bağımsız sorguları paralel çalıştır
-  const [topicFollowResult, blockedResult] = await Promise.all([
+  // Tüm sorguları tek seferde paralel çalıştır
+  const [topicFollowResult, blockedResult, entries, total] = await Promise.all([
     currentUserId
       ? prisma.topicFollow.findUnique({
           where: { userId_topicId: { userId: currentUserId, topicId: topic.id } },
@@ -119,20 +119,11 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
           select: { blockedId: true },
         }).catch(() => [])
       : Promise.resolve([]),
-  ]);
-
-  const isFollowingTopic = !!topicFollowResult;
-  const blockedUsers = blockedResult.map((b: { blockedId: string }) => b.blockedId);
-
-  const entryWhere = {
-    topicId: topic.id,
-    ...(!canSeeCaylak && { author: { role: { not: "CAYLAK" as const } } }),
-    ...(blockedUsers.length > 0 && { authorId: { notIn: blockedUsers } }),
-  };
-
-  const [entries, total] = await Promise.all([
     prisma.entry.findMany({
-      where: entryWhere,
+      where: {
+        topicId: topic.id,
+        ...(!canSeeCaylak && { author: { role: { not: "CAYLAK" as const } } }),
+      },
       orderBy,
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -143,9 +134,16 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         _count: { select: { comments: true } },
       },
     }),
-    prisma.entry.count({ where: entryWhere }),
+    prisma.entry.count({
+      where: {
+        topicId: topic.id,
+        ...(!canSeeCaylak && { author: { role: { not: "CAYLAK" as const } } }),
+      },
+    }),
   ]);
 
+  const isFollowingTopic = !!topicFollowResult;
+  const blockedUsers = blockedResult.map((b: { blockedId: string }) => b.blockedId);
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -188,7 +186,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
       </div>
       <AnketGoster topicSlug={slug} isLoggedIn={!!session?.user} />
       <div className="space-y-4">
-        {entries.map((entry, idx) => (
+        {entries.filter(e => !blockedUsers.includes(e.authorId)).map((entry, idx) => (
           <EntryKart
             key={entry.id}
             id={entry.id}

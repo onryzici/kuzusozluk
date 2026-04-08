@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import MesajBalonu from "@/components/mesaj/MesajBalonu";
 import MesajForm from "@/components/mesaj/MesajForm";
+import KonusmaSil from "@/components/mesaj/KonusmaSil";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { decryptMessage } from "@/lib/utils/encryption";
@@ -62,25 +63,28 @@ export default async function MesajDetayPage({
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b">
-        <Link
-          href="/mesajlar"
-          className="p-2 -ml-1 rounded-md hover:bg-muted transition-colors"
-          aria-label="mesajlara dön"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
-            {otherUser.username[0].toUpperCase()}
-          </div>
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-3">
           <Link
-            href={`/kullanici/${otherUser.username}`}
-            className="text-sm font-medium text-primary hover:underline"
+            href="/mesajlar"
+            className="p-2 -ml-1 rounded-md hover:bg-muted transition-colors"
+            aria-label="mesajlara dön"
           >
-            {otherUser.username}
+            <ArrowLeft className="h-4 w-4" />
           </Link>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
+              {otherUser.username[0].toUpperCase()}
+            </div>
+            <Link
+              href={`/kullanici/${otherUser.username}`}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              {otherUser.username}
+            </Link>
+          </div>
         </div>
+        <KonusmaSil username={otherUser.username} />
       </div>
 
       {/* Messages */}

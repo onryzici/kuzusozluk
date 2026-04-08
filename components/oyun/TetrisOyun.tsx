@@ -47,7 +47,7 @@ export default function TetrisOyun({ onGameOver }: Props) {
 
   const sRef = useRef({
     gameState: "idle" as GameState,
-    board: [] as (string | null)[][],
+    board: Array.from({ length: ROWS }, () => Array(COLS).fill(null)) as (string | null)[][],
     current: null as Piece | null,
     next: null as Piece | null,
     score: 0,

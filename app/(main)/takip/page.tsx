@@ -3,13 +3,22 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import EntryKart from "@/components/entry/EntryKart";
+import Sayfalama from "@/components/shared/Sayfalama";
 
 export const metadata = {
   title: "takip - kuzusozluk",
   description: "takip ettigin kullanici ve basliklardaki son entryler",
 };
 
-export default async function TakipSayfa() {
+type Props = {
+  searchParams: Promise<{ sayfa?: string }>;
+};
+
+export default async function TakipSayfa({ searchParams }: Props) {
+  const { sayfa } = await searchParams;
+  const page = Math.max(1, parseInt(sayfa || "1"));
+  const pageSize = 10;
+
   const session = await auth();
   if (!session?.user) {
     redirect("/giris");
@@ -34,22 +43,28 @@ export default async function TakipSayfa() {
     );
   }
 
-  const entries = await prisma.entry.findMany({
-    where: {
-      authorId: { in: followedUserIds },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 30,
-    include: {
-      author: {
-        select: { id: true, username: true, avatarUrl: true, role: true },
+  const where = { authorId: { in: followedUserIds } };
+
+  const [entries, total] = await Promise.all([
+    prisma.entry.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        author: {
+          select: { id: true, username: true, avatarUrl: true, role: true },
+        },
+        topic: {
+          select: { title: true, slug: true },
+        },
+        _count: { select: { comments: true } },
       },
-      topic: {
-        select: { title: true, slug: true },
-      },
-      _count: { select: { comments: true } },
-    },
-  });
+    }),
+    prisma.entry.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="w-full px-4 lg:px-8 py-6">
@@ -77,7 +92,7 @@ export default async function TakipSayfa() {
                 authorAvatarUrl={entry.author.avatarUrl}
                 createdAt={entry.createdAt.toISOString()}
                 isEdited={entry.isEdited}
-                entryNumber={idx + 1}
+                entryNumber={(page - 1) * pageSize + idx + 1}
                 isCaylak={entry.author.role === "CAYLAK"}
                 currentUserId={currentUserId}
                 authorId={entry.author.id}
@@ -85,6 +100,15 @@ export default async function TakipSayfa() {
               />
             </div>
           ))}
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div className="mt-4">
+          <Sayfalama
+            currentPage={page}
+            totalPages={totalPages}
+            basePath="/takip"
+          />
         </div>
       )}
     </div>

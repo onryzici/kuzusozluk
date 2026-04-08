@@ -2,19 +2,28 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import EntryKart from "@/components/entry/EntryKart";
+import Sayfalama from "@/components/shared/Sayfalama";
 
 export const metadata = {
   title: "son entryler - kuzusozluk",
   description: "en son yazilan entryler",
 };
 
-export default async function SonSayfa() {
-  // auth ve DB sorgusunu paralel çalıştır
-  const [session, entries] = await Promise.all([
+type Props = {
+  searchParams: Promise<{ sayfa?: string }>;
+};
+
+export default async function SonSayfa({ searchParams }: Props) {
+  const { sayfa } = await searchParams;
+  const page = Math.max(1, parseInt(sayfa || "1"));
+  const pageSize = 10;
+
+  const [session, entries, total] = await Promise.all([
     auth(),
     prisma.entry.findMany({
       orderBy: { createdAt: "desc" },
-      take: 10,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       include: {
         author: {
           select: { id: true, username: true, avatarUrl: true, role: true },
@@ -25,9 +34,11 @@ export default async function SonSayfa() {
         _count: { select: { comments: true } },
       },
     }),
+    prisma.entry.count(),
   ]);
 
   const currentUserId = (session?.user as any)?.id || null;
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="w-full px-4 lg:px-8 py-6">
@@ -55,7 +66,7 @@ export default async function SonSayfa() {
                 authorAvatarUrl={entry.author.avatarUrl}
                 createdAt={entry.createdAt.toISOString()}
                 isEdited={entry.isEdited}
-                entryNumber={idx + 1}
+                entryNumber={(page - 1) * pageSize + idx + 1}
                 isCaylak={entry.author.role === "CAYLAK"}
                 currentUserId={currentUserId}
                 authorId={entry.author.id}
@@ -63,6 +74,15 @@ export default async function SonSayfa() {
               />
             </div>
           ))}
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div className="mt-4">
+          <Sayfalama
+            currentPage={page}
+            totalPages={totalPages}
+            basePath="/son"
+          />
         </div>
       )}
     </div>

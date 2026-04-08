@@ -19,6 +19,12 @@ const oyunlar = [
     description: "noktlari ye, hayaletlerden kac. her seviye daha hizli.",
     emoji: "👾",
   },
+  {
+    slug: "tetris",
+    title: "tetris",
+    description: "satirlari tamamla, seviye atla. klasik tetris deneyimi.",
+    emoji: "🧱",
+  },
 ];
 
 export default function AtariSalonuPage() {

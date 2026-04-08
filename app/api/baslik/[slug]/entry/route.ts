@@ -76,15 +76,45 @@ export async function POST(
     },
   });
 
-  // Entry sayılarını güncelle
+  // Entry sayılarını ve streak'i güncelle
   await prisma.topic.update({
     where: { id: topic.id },
     data: { entryCount: { increment: 1 }, dayCount: { increment: 1 } },
   });
 
+  // Streak hesapla
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { lastEntryDate: true, streakCount: true },
+  });
+
+  let newStreak = 1;
+  if (user?.lastEntryDate) {
+    const lastStr = user.lastEntryDate.toISOString().slice(0, 10);
+    if (lastStr === todayStr) {
+      // Bugün zaten entry yazmış, streak değişmez
+      newStreak = user.streakCount;
+    } else {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      if (lastStr === yesterdayStr) {
+        // Dün yazmış, streak devam
+        newStreak = user.streakCount + 1;
+      }
+      // Aksi halde streak sıfırlanır (newStreak = 1)
+    }
+  }
+
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { entryCount: { increment: 1 } },
+    data: {
+      entryCount: { increment: 1 },
+      streakCount: newStreak,
+      lastEntryDate: now,
+    },
   });
 
   // Cache invalidation

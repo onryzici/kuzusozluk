@@ -2,8 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState, useCallback } from "react";
-import DinoOyun from "@/components/oyun/DinoOyun";
-import { Trophy, Gamepad2 } from "lucide-react";
+import PacmanOyun from "@/components/oyun/PacmanOyun";
+import { Trophy, Gamepad2, ShieldAlert } from "lucide-react";
 
 type ScoreEntry = {
   username: string;
@@ -12,15 +12,18 @@ type ScoreEntry = {
   updatedAt: string;
 };
 
-export default function DinoSpotSayfa() {
+export default function PacmanSayfa() {
   const { data: session, status } = useSession();
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [isNewBest, setIsNewBest] = useState(false);
 
+  const role = (session?.user as any)?.role;
+  const isAdmin = role === "ADMIN";
+
   const fetchScores = useCallback(async () => {
     try {
-      const res = await fetch("/api/oyun/skor");
+      const res = await fetch("/api/oyun/skor?game=pacman");
       const data = await res.json();
       if (data.success) setScores(data.data);
     } catch {}
@@ -38,7 +41,7 @@ export default function DinoSpotSayfa() {
         const res = await fetch("/api/oyun/skor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ score, game: "dino" }),
+          body: JSON.stringify({ score, game: "pacman" }),
         });
         const data = await res.json();
         if (data.success && data.data.isNewBest) {
@@ -57,20 +60,36 @@ export default function DinoSpotSayfa() {
     );
   }
 
+  if (!isAdmin) {
+    return (
+      <div className="w-full px-4 lg:px-8 py-12 text-center">
+        <ShieldAlert className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">
+          bu oyun henuz test asamasinda. yakinda herkese acilacak.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full px-4 lg:px-8 py-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-2 px-3 py-1.5 rounded bg-yellow-500/10 text-yellow-600 text-xs font-medium inline-flex items-center gap-1">
+        <ShieldAlert className="h-3 w-3" />
+        admin test modu — sadece adminler gorebilir
+      </div>
+
+      <div className="flex items-center gap-3 mb-6 mt-3">
         <Gamepad2 className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-lg font-bold">dino-tml</h1>
+          <h1 className="text-lg font-bold">pacman</h1>
           <p className="text-xs text-muted-foreground">
-            tml kosuyor. tombul siselerden kac, skor kas, yazarlar arasinda birinci ol.
+            noktlari ye, hayaletlerden kac. her seviye daha da hizlanir.
           </p>
         </div>
       </div>
 
       <div className="mb-6">
-        <DinoOyun onGameOver={handleGameOver} />
+        <PacmanOyun onGameOver={handleGameOver} />
         {lastScore !== null && lastScore > 0 && (
           <div className="text-center mt-2 text-sm">
             son skor: <span className="font-bold text-primary">{lastScore}</span>

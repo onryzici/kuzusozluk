@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-// POST /api/oyun/skor — Skor kaydet (sadece kişisel en yüksek skordan yüksekse güncelle)
+// POST /api/oyun/skor — Skor kaydet
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = (session.user as any).id as string;
-
   const body = await request.json();
   const score = typeof body.score === "number" ? Math.floor(body.score) : 0;
+  const game = typeof body.game === "string" ? body.game : "dino";
 
   if (score <= 0 || score > 99999) {
     return NextResponse.json(
@@ -24,21 +24,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Mevcut skoru kontrol et, sadece daha yüksekse güncelle
-  const existing = await prisma.gameScore.findUnique({ where: { userId } });
+  const existing = await prisma.gameScore.findUnique({
+    where: { userId_game: { userId, game } },
+  });
 
   if (!existing) {
-    await prisma.gameScore.create({ data: { score, userId } });
+    await prisma.gameScore.create({ data: { score, userId, game } });
   } else if (score > existing.score) {
-    await prisma.gameScore.update({ where: { userId }, data: { score } });
+    await prisma.gameScore.update({ where: { id: existing.id }, data: { score } });
   }
 
-  return NextResponse.json({ success: true, data: { score, isNewBest: !existing || score > existing.score } });
+  return NextResponse.json({
+    success: true,
+    data: { score, isNewBest: !existing || score > existing.score },
+  });
 }
 
-// GET /api/oyun/skor — Skor tablosu (herkesin en yüksek skoru)
-export async function GET() {
+// GET /api/oyun/skor — Skor tablosu
+export async function GET(request: NextRequest) {
+  const game = request.nextUrl.searchParams.get("game") || "dino";
+
   const scores = await prisma.gameScore.findMany({
+    where: { game },
     orderBy: { score: "desc" },
     take: 20,
     include: {

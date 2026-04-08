@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatTarih } from "@/lib/utils/format";
 import EntryKart from "@/components/entry/EntryKart";
 import Link from "next/link";
-import { Calendar, MessageSquare, Award, Send } from "lucide-react";
+import { Calendar, MessageSquare, Award, Send, Flame } from "lucide-react";
 import { auth } from "@/lib/auth";
 import TakipButon from "@/components/kullanici/TakipButon";
 import EngelleButon from "@/components/kullanici/EngelleButon";
@@ -33,6 +33,7 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
       karma: true,
       entryCount: true,
       generation: true,
+      streakCount: true,
       createdAt: true,
       _count: { select: { following: true, followers: true } },
     },
@@ -260,6 +261,12 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
                 <Award className="h-3 w-3" />
                 {user.karma} karma
               </span>
+              {user.streakCount > 0 && (
+                <span className="flex items-center gap-1 text-orange-500">
+                  <Flame className="h-3 w-3" />
+                  {user.streakCount} gun streak
+                </span>
+              )}
               <span>{user._count.followers} takipçi</span>
               <span>{user._count.following} takip</span>
             </div>

@@ -1,0 +1,54 @@
+import Link from "next/link";
+import { Gamepad2 } from "lucide-react";
+
+export const metadata = {
+  title: "atari salonu - kuzusozluk",
+  description: "mini oyunlar oyna, skor kas, yazarlar arasinda birinci ol",
+};
+
+const oyunlar = [
+  {
+    slug: "dino",
+    title: "dino-tml",
+    description: "tml kosuyor. tombul siselerden kac, skor kas.",
+    emoji: "🦕",
+  },
+  {
+    slug: "pacman",
+    title: "pacman",
+    description: "noktlari ye, hayaletlerden kac. her seviye daha hizli.",
+    emoji: "👾",
+  },
+];
+
+export default function AtariSalonuPage() {
+  return (
+    <div className="w-full px-4 lg:px-8 py-6 max-w-3xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <Gamepad2 className="h-6 w-6 text-primary" />
+        <div>
+          <h1 className="text-lg font-bold">atari salonu</h1>
+          <p className="text-xs text-muted-foreground">
+            mini oyunlar oyna, skor kas, yazarlar arasinda birinci ol.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {oyunlar.map((o) => (
+          <Link
+            key={o.slug}
+            href={`/atari-salonu/${o.slug}`}
+            className="group border border-border rounded-lg p-5 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          >
+            <div className="text-3xl mb-3">{o.emoji}</div>
+            <h2 className="text-sm font-bold group-hover:text-primary transition-colors">
+              {o.title}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">{o.description}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}

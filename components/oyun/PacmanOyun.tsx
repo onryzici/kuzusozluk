@@ -2,180 +2,142 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 
-const CANVAS_W = 600;
-const CANVAS_H = 400;
+// --- Constants ---
 const TILE = 20;
-const COLS = CANVAS_W / TILE;
-const ROWS = CANVAS_H / TILE;
+const COLS = 28;
+const ROWS = 31;
+const CANVAS_W = COLS * TILE;
+const CANVAS_H = ROWS * TILE;
+const PAC_SPEED = 80; // pixels per second
+const GHOST_SPEED_BASE = 65;
+const GHOST_SPEED_INCREMENT = 4; // per level
+const TICK_RATE = 1 / 120; // fixed timestep (120 ticks/s)
 
-type Dir = "up" | "down" | "left" | "right";
-type GameState = "idle" | "playing" | "dead";
+type Dir = "up" | "down" | "left" | "right" | "none";
+type GameState = "idle" | "playing" | "dead" | "levelup";
+
 type Ghost = {
-  x: number;
-  y: number;
+  x: number; y: number;
   dir: Dir;
   color: string;
-  speed: number;
+  moveTimer: number;
 };
 
-// Simple maze layout (1 = wall, 0 = path, 2 = dot)
-function generateMaze(): number[][] {
+// Classic pacman-style maze (1=wall, 0=empty, 2=dot, 3=power pellet)
+const MAZE_TEMPLATE = [
+  "1111111111111111111111111111",
+  "1222222222222112222222222221",
+  "1211112111112112111112111121",
+  "1311112111112112111112111131",
+  "1211112111112112111112111121",
+  "1222222222222222222222222221",
+  "1211112112111111211211112121",
+  "1211112112111111211211112121",
+  "1222222112222112222112222221",
+  "1111112111110110111112111111",
+  "0000012111110110111112100000",
+  "1111112110000000011211211111",
+  "0000012110111011011211200000",
+  "1111112000100001002112111111",
+  "0000002010100001010200000000",
+  "1111112010111110010211111111",
+  "0000012010000000010210000000",
+  "1111112010111111010211111111",
+  "1222222200222222002222222221",
+  "1211112111112112111112111121",
+  "1211112111112112111112111121",
+  "1322112222222002222222112231",
+  "1112112112111111211211211211",
+  "1112112112111111211211211211",
+  "1222222212222112222122222221",
+  "1211111111112112111111111121",
+  "1211111111112112111111111121",
+  "1222222222222222222222222221",
+  "1111111111111111111111111111",
+  "0000000000000000000000000000",
+  "0000000000000000000000000000",
+];
+
+function parseMaze(): number[][] {
   const grid: number[][] = [];
   for (let r = 0; r < ROWS; r++) {
     grid[r] = [];
+    const row = MAZE_TEMPLATE[r] || "0".repeat(COLS);
     for (let c = 0; c < COLS; c++) {
-      // Borders
-      if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) {
-        grid[r][c] = 1;
-      } else {
-        grid[r][c] = 2; // dot
-      }
+      grid[r][c] = parseInt(row[c] || "0");
     }
   }
-
-  // Internal walls pattern
-  const wallPatterns = [
-    // Horizontal walls
-    [2, 2, 5], [2, 7, 5], [2, 12, 5], [2, 19, 5], [2, 24, 5],
-    [4, 4, 3], [4, 9, 4], [4, 17, 4], [4, 23, 3],
-    [6, 2, 4], [6, 8, 3], [6, 13, 4], [6, 19, 3], [6, 24, 4],
-    [8, 4, 5], [8, 11, 8], [8, 21, 5],
-    [10, 2, 3], [10, 7, 4], [10, 19, 4], [10, 25, 3],
-    [12, 4, 5], [12, 11, 8], [12, 21, 5],
-    [14, 2, 4], [14, 8, 3], [14, 13, 4], [14, 19, 3], [14, 24, 4],
-    [16, 4, 3], [16, 9, 4], [16, 17, 4], [16, 23, 3],
-    [18, 2, 5], [18, 9, 3], [18, 18, 3], [18, 23, 5],
-  ];
-
-  for (const [row, col, len] of wallPatterns) {
-    if (row < ROWS) {
-      for (let i = 0; i < len && col + i < COLS; i++) {
-        grid[row][col + i] = 1;
-      }
-    }
-  }
-
-  // Vertical walls
-  const vWalls = [
-    [3, 10, 3], [3, 20, 3],
-    [7, 6, 3], [7, 24, 3],
-    [11, 10, 3], [11, 20, 3],
-    [15, 6, 3], [15, 24, 3],
-  ];
-  for (const [startRow, col, len] of vWalls) {
-    for (let i = 0; i < len && startRow + i < ROWS; i++) {
-      if (col < COLS) grid[startRow + i][col] = 1;
-    }
-  }
-
   return grid;
 }
 
 function getOpposite(dir: Dir): Dir {
-  return dir === "up" ? "down" : dir === "down" ? "up" : dir === "left" ? "right" : "left";
+  if (dir === "up") return "down";
+  if (dir === "down") return "up";
+  if (dir === "left") return "right";
+  if (dir === "right") return "left";
+  return "none";
 }
 
-type Props = {
-  onGameOver: (score: number) => void;
-};
+type Props = { onGameOver: (score: number) => void };
 
 export default function PacmanOyun({ onGameOver }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [displayScore, setDisplayScore] = useState(0);
+  const [displayLives, setDisplayLives] = useState(3);
   const [gameState, setGameState] = useState<GameState>("idle");
   const [highScore, setHighScore] = useState(0);
   const animRef = useRef<number>(0);
 
-  const stateRef = useRef<{
-    gameState: GameState;
-    pacX: number;
-    pacY: number;
-    pacDir: Dir;
-    nextDir: Dir;
-    mouthOpen: boolean;
-    frame: number;
-    score: number;
-    lives: number;
-    grid: number[][];
-    ghosts: Ghost[];
-    totalDots: number;
-    ghostSpeedBase: number;
-  }>({
-    gameState: "idle",
-    pacX: 1,
-    pacY: 1,
-    pacDir: "right",
-    nextDir: "right",
-    mouthOpen: true,
-    frame: 0,
-    score: 0,
-    lives: 3,
-    grid: generateMaze(),
-    ghosts: [
-      { x: COLS - 2, y: 1, dir: "left" as Dir, color: "#ff0000", speed: 0 },
-      { x: COLS - 2, y: ROWS - 2, dir: "up" as Dir, color: "#00ffff", speed: 0 },
-      { x: 1, y: ROWS - 2, dir: "right" as Dir, color: "#ffb8ff", speed: 0 },
-      { x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2), dir: "up" as Dir, color: "#ffb852", speed: 0 },
-    ],
-    totalDots: 0,
-    ghostSpeedBase: 8,
+  const stateRef = useRef({
+    gameState: "idle" as GameState,
+    // Pacman — pixel positions
+    px: 14 * TILE, py: 21 * TILE,
+    dir: "left" as Dir, nextDir: "left" as Dir,
+    mouthAngle: 0, mouthDir: 1,
+    // Game
+    score: 0, lives: 3, level: 1,
+    grid: parseMaze(),
+    ghosts: [] as Ghost[],
+    accumulator: 0,
+    lastTime: 0,
+    // Power
+    powerTimer: 0,
+    levelUpTimer: 0,
   });
+
+  function initGhosts(): Ghost[] {
+    return [
+      { x: 12 * TILE, y: 13 * TILE, dir: "up", color: "#ff0000", moveTimer: 0 },
+      { x: 14 * TILE, y: 13 * TILE, dir: "up", color: "#00ffff", moveTimer: 0 },
+      { x: 13 * TILE, y: 14 * TILE, dir: "left", color: "#ffb8ff", moveTimer: 0 },
+      { x: 15 * TILE, y: 14 * TILE, dir: "right", color: "#ffb852", moveTimer: 0 },
+    ];
+  }
 
   const resetGame = useCallback(() => {
     const s = stateRef.current;
-    s.grid = generateMaze();
-    s.pacX = 1;
-    s.pacY = 1;
-    s.pacDir = "right";
-    s.nextDir = "right";
-    s.mouthOpen = true;
-    s.frame = 0;
-    s.score = 0;
-    s.lives = 3;
-    s.ghostSpeedBase = 8;
-
-    // Clear pacman start area
-    s.grid[1][1] = 0;
-    s.grid[1][2] = 0;
-
-    // Count dots
-    let dots = 0;
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        if (s.grid[r][c] === 2) dots++;
-      }
-    }
-    s.totalDots = dots;
-
-    // Create ghosts at different positions
-    s.ghosts = [
-      { x: COLS - 2, y: 1, dir: "left", color: "#ff0000", speed: 0 },
-      { x: COLS - 2, y: ROWS - 2, dir: "up", color: "#00ffff", speed: 0 },
-      { x: 1, y: ROWS - 2, dir: "right", color: "#ffb8ff", speed: 0 },
-      { x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2), dir: "up", color: "#ffb852", speed: 0 },
-    ];
-
-    // Clear ghost start tiles
-    for (const g of s.ghosts) {
-      if (s.grid[g.y] && s.grid[g.y][g.x] !== 1) s.grid[g.y][g.x] = 0;
-    }
-
+    s.grid = parseMaze();
+    s.px = 14 * TILE; s.py = 21 * TILE;
+    s.dir = "left"; s.nextDir = "left";
+    s.mouthAngle = 0; s.mouthDir = 1;
+    s.score = 0; s.lives = 3; s.level = 1;
+    s.ghosts = initGhosts();
+    s.accumulator = 0; s.lastTime = 0;
+    s.powerTimer = 0; s.levelUpTimer = 0;
     s.gameState = "playing";
     setGameState("playing");
     setDisplayScore(0);
+    setDisplayLives(3);
   }, []);
 
-  // Input
+  // --- Input ---
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const s = stateRef.current;
       if (e.code === "Space" && (s.gameState === "idle" || s.gameState === "dead")) {
-        e.preventDefault();
-        resetGame();
-        return;
+        e.preventDefault(); resetGame(); return;
       }
       if (s.gameState !== "playing") return;
-
       if (e.code === "ArrowUp" || e.code === "KeyW") { e.preventDefault(); s.nextDir = "up"; }
       if (e.code === "ArrowDown" || e.code === "KeyS") { e.preventDefault(); s.nextDir = "down"; }
       if (e.code === "ArrowLeft" || e.code === "KeyA") { e.preventDefault(); s.nextDir = "left"; }
@@ -189,210 +151,274 @@ export default function PacmanOyun({ onGameOver }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    let startX = 0, startY = 0;
-
+    let sx = 0, sy = 0;
     const onStart = (e: TouchEvent) => {
       e.preventDefault();
       const s = stateRef.current;
-      if (s.gameState === "idle" || s.gameState === "dead") {
-        resetGame();
-        return;
-      }
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
+      if (s.gameState === "idle" || s.gameState === "dead") { resetGame(); return; }
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
     };
     const onEnd = (e: TouchEvent) => {
       const s = stateRef.current;
       if (s.gameState !== "playing" || !e.changedTouches[0]) return;
-      const dx = e.changedTouches[0].clientX - startX;
-      const dy = e.changedTouches[0].clientY - startY;
+      const dx = e.changedTouches[0].clientX - sx;
+      const dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // too small
       if (Math.abs(dx) > Math.abs(dy)) {
         s.nextDir = dx > 0 ? "right" : "left";
       } else {
         s.nextDir = dy > 0 ? "down" : "up";
       }
     };
-
     canvas.addEventListener("touchstart", onStart, { passive: false });
     canvas.addEventListener("touchend", onEnd, { passive: false });
-    return () => {
-      canvas.removeEventListener("touchstart", onStart);
-      canvas.removeEventListener("touchend", onEnd);
-    };
+    return () => { canvas.removeEventListener("touchstart", onStart); canvas.removeEventListener("touchend", onEnd); };
   }, [resetGame]);
 
-  // Game loop
+  // --- Game loop ---
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
 
-    function canMove(x: number, y: number): boolean {
+    function tileAt(px: number, py: number): number {
       const s = stateRef.current;
-      return y >= 0 && y < ROWS && x >= 0 && x < COLS && s.grid[y][x] !== 1;
+      const c = Math.floor(px / TILE);
+      const r = Math.floor(py / TILE);
+      if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 1;
+      return s.grid[r]?.[c] ?? 1;
     }
 
-    function moveDir(x: number, y: number, dir: Dir): [number, number] {
-      if (dir === "up") return [x, y - 1];
-      if (dir === "down") return [x, y + 1];
-      if (dir === "left") return [x - 1, y];
-      return [x + 1, y];
+    function isWall(px: number, py: number): boolean {
+      return tileAt(px, py) === 1;
     }
 
-    function moveGhost(g: Ghost) {
+    function canMovePixel(x: number, y: number, dir: Dir, speed: number): boolean {
+      const half = TILE / 2 - 2; // collision padding
+      let nx = x, ny = y;
+      if (dir === "left") nx -= speed;
+      if (dir === "right") nx += speed;
+      if (dir === "up") ny -= speed;
+      if (dir === "down") ny += speed;
+      // Check all 4 corners
+      return !isWall(nx - half, ny - half) && !isWall(nx + half, ny - half) &&
+             !isWall(nx - half, ny + half) && !isWall(nx + half, ny + half);
+    }
+
+    function snapToGrid(val: number): number {
+      return Math.round(val / TILE) * TILE;
+    }
+
+    function alignedToGrid(x: number, y: number): boolean {
+      return Math.abs(x - snapToGrid(x)) < 2 && Math.abs(y - snapToGrid(y)) < 2;
+    }
+
+    function moveEntity(x: number, y: number, dir: Dir, speed: number): [number, number] {
+      if (dir === "left") return [x - speed, y];
+      if (dir === "right") return [x + speed, y];
+      if (dir === "up") return [x, y - speed];
+      if (dir === "down") return [x, y + speed];
+      return [x, y];
+    }
+
+    function ghostSpeed(): number {
       const s = stateRef.current;
-      const dirs: Dir[] = ["up", "down", "left", "right"];
-      const opposite = getOpposite(g.dir);
+      const spd = GHOST_SPEED_BASE + (s.level - 1) * GHOST_SPEED_INCREMENT;
+      return s.powerTimer > 0 ? spd * 0.5 : Math.min(spd, PAC_SPEED + 10);
+    }
 
-      // Try to chase pacman with some randomness
-      const possibleDirs = dirs.filter((d) => {
-        if (d === opposite) return false;
-        const [nx, ny] = moveDir(g.x, g.y, d);
-        return canMove(nx, ny);
-      });
+    function moveGhost(g: Ghost, dt: number) {
+      const s = stateRef.current;
+      const spd = ghostSpeed() * dt;
+      g.moveTimer += dt;
 
-      if (possibleDirs.length === 0) {
-        // Dead end, go back
-        const [nx, ny] = moveDir(g.x, g.y, opposite);
-        if (canMove(nx, ny)) {
-          g.dir = opposite;
-          g.x = nx;
-          g.y = ny;
+      // Only change direction at grid intersections
+      if (!alignedToGrid(g.x + TILE / 2, g.y + TILE / 2)) {
+        if (canMovePixel(g.x + TILE / 2, g.y + TILE / 2, g.dir, spd)) {
+          const [nx, ny] = moveEntity(g.x + TILE / 2, g.y + TILE / 2, g.dir, spd);
+          g.x = nx - TILE / 2; g.y = ny - TILE / 2;
         }
         return;
       }
 
-      // 60% chance to chase pacman, 40% random
-      let chosen: Dir;
-      if (Math.random() < 0.6) {
-        const dx = s.pacX - g.x;
-        const dy = s.pacY - g.y;
-        const preferred: Dir[] = [];
-        if (Math.abs(dx) > Math.abs(dy)) {
-          preferred.push(dx > 0 ? "right" : "left");
-          preferred.push(dy > 0 ? "down" : "up");
-        } else {
-          preferred.push(dy > 0 ? "down" : "up");
-          preferred.push(dx > 0 ? "right" : "left");
+      // Snap
+      g.x = snapToGrid(g.x + TILE / 2) - TILE / 2;
+      g.y = snapToGrid(g.y + TILE / 2) - TILE / 2;
+
+      const dirs: Dir[] = ["up", "down", "left", "right"];
+      const opposite = getOpposite(g.dir);
+      const gx = g.x + TILE / 2, gy = g.y + TILE / 2;
+
+      const possible = dirs.filter(d => {
+        if (d === opposite) return false;
+        return canMovePixel(gx, gy, d, spd);
+      });
+
+      if (possible.length === 0) {
+        if (canMovePixel(gx, gy, opposite, spd)) {
+          g.dir = opposite;
         }
-        chosen = preferred.find((d) => possibleDirs.includes(d)) || possibleDirs[0];
       } else {
-        chosen = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+        // Chase pacman (70%) or random (30%)
+        if (s.powerTimer > 0 || Math.random() < 0.3) {
+          g.dir = possible[Math.floor(Math.random() * possible.length)];
+        } else {
+          const dx = s.px - gx, dy = s.py - gy;
+          const preferred: Dir[] = [];
+          if (Math.abs(dx) > Math.abs(dy)) {
+            preferred.push(dx > 0 ? "right" : "left", dy > 0 ? "down" : "up");
+          } else {
+            preferred.push(dy > 0 ? "down" : "up", dx > 0 ? "right" : "left");
+          }
+          g.dir = preferred.find(d => possible.includes(d)) || possible[0];
+        }
       }
 
-      const [nx, ny] = moveDir(g.x, g.y, chosen);
-      g.dir = chosen;
-      g.x = nx;
-      g.y = ny;
+      const [nx, ny] = moveEntity(gx, gy, g.dir, spd);
+      g.x = nx - TILE / 2; g.y = ny - TILE / 2;
     }
 
-    function update() {
+    function update(dt: number) {
       const s = stateRef.current;
+      if (s.gameState === "levelup") {
+        s.levelUpTimer -= dt;
+        if (s.levelUpTimer <= 0) {
+          s.gameState = "playing";
+          setGameState("playing");
+        }
+        return;
+      }
       if (s.gameState !== "playing") return;
 
-      s.frame++;
+      // Mouth animation
+      s.mouthAngle += s.mouthDir * dt * 8;
+      if (s.mouthAngle > 0.35) { s.mouthAngle = 0.35; s.mouthDir = -1; }
+      if (s.mouthAngle < 0) { s.mouthAngle = 0; s.mouthDir = 1; }
 
-      // Pacman movement (every 4 frames)
-      if (s.frame % 4 === 0) {
-        s.mouthOpen = !s.mouthOpen;
+      // Power timer
+      if (s.powerTimer > 0) s.powerTimer -= dt;
 
-        // Try next direction first
-        const [nx, ny] = moveDir(s.pacX, s.pacY, s.nextDir);
-        if (canMove(nx, ny)) {
-          s.pacDir = s.nextDir;
-          s.pacX = nx;
-          s.pacY = ny;
-        } else {
-          // Continue current direction
-          const [cx, cy] = moveDir(s.pacX, s.pacY, s.pacDir);
-          if (canMove(cx, cy)) {
-            s.pacX = cx;
-            s.pacY = cy;
-          }
-        }
+      // --- Pacman movement ---
+      const pacSpeed = PAC_SPEED * dt;
+      const pcx = s.px + TILE / 2, pcy = s.py + TILE / 2;
 
-        // Eat dot
-        if (s.grid[s.pacY][s.pacX] === 2) {
-          s.grid[s.pacY][s.pacX] = 0;
-          s.score += 10;
+      // At intersection, try turning
+      if (alignedToGrid(pcx, pcy)) {
+        s.px = snapToGrid(pcx) - TILE / 2;
+        s.py = snapToGrid(pcy) - TILE / 2;
 
-          // Increase ghost speed as score goes up
-          s.ghostSpeedBase = Math.max(3, 8 - Math.floor(s.score / 200));
+        if (s.nextDir !== "none" && canMovePixel(s.px + TILE / 2, s.py + TILE / 2, s.nextDir, pacSpeed)) {
+          s.dir = s.nextDir;
         }
       }
 
-      // Ghost movement (speed increases over time)
-      if (s.frame % s.ghostSpeedBase === 0) {
-        for (const g of s.ghosts) {
-          moveGhost(g);
-        }
+      if (s.dir !== "none" && canMovePixel(s.px + TILE / 2, s.py + TILE / 2, s.dir, pacSpeed)) {
+        const [nx, ny] = moveEntity(s.px + TILE / 2, s.py + TILE / 2, s.dir, pacSpeed);
+        s.px = nx - TILE / 2; s.py = ny - TILE / 2;
       }
 
-      // Collision with ghosts
+      // Tunnel wrap
+      if (s.px < -TILE) s.px = CANVAS_W;
+      if (s.px > CANVAS_W) s.px = -TILE;
+
+      // Eat dots
+      const col = Math.floor((s.px + TILE / 2) / TILE);
+      const row = Math.floor((s.py + TILE / 2) / TILE);
+      if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+        const cell = s.grid[row][col];
+        if (cell === 2) { s.grid[row][col] = 0; s.score += 10; }
+        if (cell === 3) { s.grid[row][col] = 0; s.score += 50; s.powerTimer = 7; }
+      }
+
+      // --- Ghosts ---
       for (const g of s.ghosts) {
-        if (g.x === s.pacX && g.y === s.pacY) {
-          s.lives--;
-          if (s.lives <= 0) {
-            s.gameState = "dead";
-            setGameState("dead");
-            if (s.score > highScore) setHighScore(s.score);
-            onGameOver(s.score);
+        moveGhost(g, dt);
+
+        // Tunnel wrap for ghosts too
+        if (g.x < -TILE) g.x = CANVAS_W;
+        if (g.x > CANVAS_W) g.x = -TILE;
+
+        // Collision
+        const dx = (g.x + TILE / 2) - (s.px + TILE / 2);
+        const dy = (g.y + TILE / 2) - (s.py + TILE / 2);
+        if (Math.abs(dx) < TILE * 0.7 && Math.abs(dy) < TILE * 0.7) {
+          if (s.powerTimer > 0) {
+            // Eat ghost
+            s.score += 200;
+            g.x = 13 * TILE; g.y = 13 * TILE; g.dir = "up";
           } else {
-            // Respawn pacman
-            s.pacX = 1;
-            s.pacY = 1;
-            s.pacDir = "right";
-            s.nextDir = "right";
+            s.lives--;
+            setDisplayLives(s.lives);
+            if (s.lives <= 0) {
+              s.gameState = "dead";
+              setGameState("dead");
+              if (s.score > highScore) setHighScore(s.score);
+              onGameOver(s.score);
+            } else {
+              // Respawn
+              s.px = 14 * TILE; s.py = 21 * TILE;
+              s.dir = "left"; s.nextDir = "left";
+              s.ghosts = initGhosts();
+            }
+            return;
           }
-          return;
         }
       }
 
-      // All dots eaten — next level
-      let dotsLeft = 0;
-      for (let r = 0; r < ROWS; r++) {
+      // Check level complete
+      let dotsLeft = false;
+      outer: for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-          if (s.grid[r][c] === 2) dotsLeft++;
+          if (s.grid[r][c] === 2 || s.grid[r][c] === 3) { dotsLeft = true; break outer; }
         }
       }
-      if (dotsLeft === 0) {
-        // Regenerate maze, keep score, increase difficulty
-        s.grid = generateMaze();
-        s.grid[1][1] = 0;
-        s.grid[1][2] = 0;
-        s.pacX = 1;
-        s.pacY = 1;
-        s.ghostSpeedBase = Math.max(2, s.ghostSpeedBase - 1);
-        for (const g of s.ghosts) {
-          g.x = COLS - 2;
-          g.y = 1;
-          if (s.grid[g.y] && s.grid[g.y][g.x] !== 1) s.grid[g.y][g.x] = 0;
-        }
+      if (!dotsLeft) {
+        s.level++;
+        s.grid = parseMaze();
+        s.px = 14 * TILE; s.py = 21 * TILE;
+        s.dir = "left"; s.nextDir = "left";
+        s.ghosts = initGhosts();
+        s.powerTimer = 0;
+        s.gameState = "levelup";
+        s.levelUpTimer = 1.5;
+        setGameState("levelup");
       }
 
-      if (s.frame % 4 === 0) setDisplayScore(s.score);
+      setDisplayScore(s.score);
     }
 
     function draw() {
       const s = stateRef.current;
       const isDark = document.documentElement.classList.contains("dark");
 
-      ctx.fillStyle = isDark ? "#0a0a1a" : "#000";
+      // Background
+      ctx.fillStyle = isDark ? "#0a0a1a" : "#000011";
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-      // Draw maze
+      // Maze walls with rounded look
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-          const x = c * TILE;
-          const y = r * TILE;
+          const x = c * TILE, y = r * TILE;
+          const cell = s.grid[r]?.[c];
 
-          if (s.grid[r][c] === 1) {
-            ctx.fillStyle = isDark ? "#1a237e" : "#1565c0";
+          if (cell === 1) {
+            ctx.fillStyle = isDark ? "#1a237e" : "#1a3a8a";
             ctx.fillRect(x + 1, y + 1, TILE - 2, TILE - 2);
-          } else if (s.grid[r][c] === 2) {
+            // Border highlight
+            ctx.strokeStyle = isDark ? "#3949ab" : "#2962ff";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 1.5, y + 1.5, TILE - 3, TILE - 3);
+          } else if (cell === 2) {
             ctx.fillStyle = "#ffcc80";
             ctx.beginPath();
-            ctx.arc(x + TILE / 2, y + TILE / 2, 2.5, 0, Math.PI * 2);
+            ctx.arc(x + TILE / 2, y + TILE / 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (cell === 3) {
+            // Power pellet — pulsing
+            const pulse = 3 + Math.sin(Date.now() / 200) * 1.5;
+            ctx.fillStyle = "#ffcc80";
+            ctx.beginPath();
+            ctx.arc(x + TILE / 2, y + TILE / 2, pulse, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -400,105 +426,156 @@ export default function PacmanOyun({ onGameOver }: Props) {
 
       // Pacman
       if (s.gameState !== "idle") {
-        const px = s.pacX * TILE + TILE / 2;
-        const py = s.pacY * TILE + TILE / 2;
-        const r = TILE / 2 - 2;
+        const px = s.px + TILE / 2, py = s.py + TILE / 2;
+        const r = TILE / 2 - 1;
+        let angle = 0;
+        if (s.dir === "right") angle = 0;
+        else if (s.dir === "down") angle = Math.PI / 2;
+        else if (s.dir === "left") angle = Math.PI;
+        else if (s.dir === "up") angle = -Math.PI / 2;
 
-        let startAngle = 0;
-        if (s.pacDir === "right") startAngle = 0;
-        else if (s.pacDir === "down") startAngle = Math.PI / 2;
-        else if (s.pacDir === "left") startAngle = Math.PI;
-        else startAngle = -Math.PI / 2;
-
-        const mouth = s.mouthOpen ? 0.3 : 0.05;
+        const mouth = s.mouthAngle;
         ctx.fillStyle = "#ffeb3b";
         ctx.beginPath();
         ctx.moveTo(px, py);
-        ctx.arc(px, py, r, startAngle + mouth * Math.PI, startAngle - mouth * Math.PI + 2 * Math.PI);
+        ctx.arc(px, py, r, angle + mouth * Math.PI, angle - mouth * Math.PI + Math.PI * 2);
         ctx.closePath();
         ctx.fill();
       }
 
       // Ghosts
+      const isPowered = s.powerTimer > 0;
       for (const g of s.ghosts) {
-        const gx = g.x * TILE + TILE / 2;
-        const gy = g.y * TILE + TILE / 2;
-        const r = TILE / 2 - 2;
+        const gx = g.x + TILE / 2, gy = g.y + TILE / 2;
+        const r = TILE / 2 - 1;
 
-        ctx.fillStyle = g.color;
+        // Flashing when power ending
+        const flashing = isPowered && s.powerTimer < 2 && Math.floor(Date.now() / 200) % 2 === 0;
+        ctx.fillStyle = isPowered ? (flashing ? "#fff" : "#2222ff") : g.color;
+
         // Body
         ctx.beginPath();
         ctx.arc(gx, gy - 2, r, Math.PI, 0);
-        ctx.lineTo(gx + r, gy + r);
-        // Wavy bottom
-        for (let i = 0; i < 3; i++) {
-          const waveX = gx + r - (i + 1) * (r * 2 / 3);
-          ctx.quadraticCurveTo(waveX + r / 3, gy + r - 4, waveX, gy + r);
+        ctx.lineTo(gx + r, gy + r - 2);
+        const segments = 4;
+        for (let i = 0; i < segments; i++) {
+          const segW = (r * 2) / segments;
+          const bx = gx + r - i * segW;
+          const midX = bx - segW / 2;
+          const bottomY = gy + r - 2;
+          ctx.quadraticCurveTo(midX, bottomY - 4, bx - segW, bottomY);
         }
         ctx.closePath();
         ctx.fill();
 
         // Eyes
-        ctx.fillStyle = "white";
+        if (!isPowered) {
+          ctx.fillStyle = "white";
+          ctx.beginPath();
+          ctx.arc(gx - 4, gy - 3, 3.5, 0, Math.PI * 2);
+          ctx.arc(gx + 4, gy - 3, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          // Pupils look at pacman
+          const dx = s.px - g.x, dy = s.py - g.y;
+          const a = Math.atan2(dy, dx);
+          ctx.fillStyle = "#111";
+          ctx.beginPath();
+          ctx.arc(gx - 4 + Math.cos(a) * 1.5, gy - 3 + Math.sin(a) * 1.5, 1.8, 0, Math.PI * 2);
+          ctx.arc(gx + 4 + Math.cos(a) * 1.5, gy - 3 + Math.sin(a) * 1.5, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Scared face
+          ctx.fillStyle = isPowered && !flashing ? "#fff" : "#2222ff";
+          ctx.beginPath();
+          ctx.arc(gx - 3, gy - 3, 2, 0, Math.PI * 2);
+          ctx.arc(gx + 3, gy - 3, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // HUD background
+      ctx.fillStyle = isDark ? "#0a0a1a" : "#000011";
+      ctx.fillRect(0, CANVAS_H - 24, CANVAS_W, 24);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 13px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(`SKOR ${s.score.toString().padStart(6, "0")}`, 8, CANVAS_H - 8);
+
+      ctx.textAlign = "center";
+      ctx.fillText(`SEVIYE ${s.level}`, CANVAS_W / 2, CANVAS_H - 8);
+
+      ctx.textAlign = "right";
+      for (let i = 0; i < s.lives; i++) {
+        ctx.fillStyle = "#ffeb3b";
         ctx.beginPath();
-        ctx.arc(gx - 3, gy - 4, 3, 0, Math.PI * 2);
-        ctx.arc(gx + 3, gy - 4, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#111";
-        ctx.beginPath();
-        ctx.arc(gx - 2, gy - 3, 1.5, 0, Math.PI * 2);
-        ctx.arc(gx + 4, gy - 3, 1.5, 0, Math.PI * 2);
+        ctx.arc(CANVAS_W - 16 - i * 22, CANVAS_H - 13, 7, 0.2 * Math.PI, 1.8 * Math.PI);
+        ctx.lineTo(CANVAS_W - 16 - i * 22, CANVAS_H - 13);
         ctx.fill();
       }
 
-      // UI
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 14px monospace";
-      ctx.textAlign = "left";
-      ctx.fillText(`SKOR: ${s.score.toString().padStart(5, "0")}`, 8, CANVAS_H - 6);
-
-      // Lives
-      ctx.textAlign = "right";
-      ctx.fillText("CAN: " + "❤️".repeat(Math.max(0, s.lives)), CANVAS_W - 8, CANVAS_H - 6);
-
       if (highScore > 0) {
+        ctx.fillStyle = "#888";
+        ctx.font = "10px monospace";
         ctx.textAlign = "center";
-        ctx.fillStyle = "#aaa";
-        ctx.font = "11px monospace";
-        ctx.fillText(`HI ${highScore.toString().padStart(5, "0")}`, CANVAS_W / 2, CANVAS_H - 6);
+        ctx.fillText(`HI ${highScore.toString().padStart(6, "0")}`, CANVAS_W / 2, CANVAS_H - 20);
       }
 
       // Overlays
       if (s.gameState === "idle") {
-        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
         ctx.fillStyle = "#ffeb3b";
-        ctx.font = "bold 24px monospace";
+        ctx.font = "bold 28px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("PACMAN", CANVAS_W / 2, CANVAS_H / 2 - 20);
+        ctx.fillText("PACMAN", CANVAS_W / 2, CANVAS_H / 2 - 30);
         ctx.fillStyle = "#aaa";
-        ctx.font = "14px monospace";
-        ctx.fillText("baslamak icin SPACE veya dokun", CANVAS_W / 2, CANVAS_H / 2 + 14);
+        ctx.font = "13px monospace";
+        ctx.fillText("ok tuslari / WASD ile oyna", CANVAS_W / 2, CANVAS_H / 2);
+        ctx.fillText("SPACE veya dokun ile basla", CANVAS_W / 2, CANVAS_H / 2 + 22);
       }
 
       if (s.gameState === "dead") {
-        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
         ctx.fillStyle = "#ff5252";
-        ctx.font = "bold 24px monospace";
+        ctx.font = "bold 28px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", CANVAS_W / 2, CANVAS_H / 2 - 20);
+        ctx.fillText("GAME OVER", CANVAS_W / 2, CANVAS_H / 2 - 25);
         ctx.fillStyle = "#ffeb3b";
-        ctx.font = "bold 18px monospace";
-        ctx.fillText(`SKOR: ${s.score}`, CANVAS_W / 2, CANVAS_H / 2 + 10);
+        ctx.font = "bold 20px monospace";
+        ctx.fillText(`SKOR: ${s.score}`, CANVAS_W / 2, CANVAS_H / 2 + 8);
         ctx.fillStyle = "#aaa";
         ctx.font = "13px monospace";
-        ctx.fillText("tekrar icin SPACE", CANVAS_W / 2, CANVAS_H / 2 + 36);
+        ctx.fillText("tekrar icin SPACE", CANVAS_W / 2, CANVAS_H / 2 + 35);
+      }
+
+      if (s.gameState === "levelup") {
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.fillStyle = "#ffeb3b";
+        ctx.font = "bold 24px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`SEVIYE ${s.level}`, CANVAS_W / 2, CANVAS_H / 2);
       }
     }
 
-    function gameLoop() {
-      update();
+    function gameLoop(time: number) {
+      const s = stateRef.current;
+      if (s.lastTime === 0) s.lastTime = time;
+      const rawDt = (time - s.lastTime) / 1000;
+      s.lastTime = time;
+
+      // Cap delta to avoid spiral of death
+      const dt = Math.min(rawDt, 0.05);
+      s.accumulator += dt;
+
+      // Fixed timestep updates
+      while (s.accumulator >= TICK_RATE) {
+        update(TICK_RATE);
+        s.accumulator -= TICK_RATE;
+      }
+
       draw();
       animRef.current = requestAnimationFrame(gameLoop);
     }
@@ -513,15 +590,16 @@ export default function PacmanOyun({ onGameOver }: Props) {
         ref={canvasRef}
         width={CANVAS_W}
         height={CANVAS_H}
-        className="border border-border rounded-lg w-full max-w-[600px] cursor-pointer touch-none"
+        className="border border-border rounded-lg w-full max-w-[560px] cursor-pointer touch-none"
         onClick={() => {
           const s = stateRef.current;
           if (s.gameState === "idle" || s.gameState === "dead") resetGame();
         }}
       />
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span>ok tuslari / WASD : yon</span>
-        <span>skor: {displayScore.toString().padStart(5, "0")}</span>
+        <span>ok tuslari / WASD</span>
+        <span>skor: {displayScore.toString().padStart(6, "0")}</span>
+        <span>can: {displayLives}</span>
       </div>
     </div>
   );

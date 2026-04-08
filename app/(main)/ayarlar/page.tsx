@@ -5,6 +5,7 @@ import AyarlarForm from "@/components/ayarlar/AyarlarForm";
 import AvatarYukle from "@/components/kullanici/AvatarYukle";
 import HesapSil from "@/components/ayarlar/HesapSil";
 import TemaSec from "@/components/ayarlar/TemaSec";
+import PushBildirimAyar from "@/components/ayarlar/PushBildirimAyar";
 
 export default async function AyarlarSayfa() {
   const session = await auth();
@@ -48,6 +49,8 @@ export default async function AyarlarSayfa() {
       />
 
       <TemaSec />
+
+      <PushBildirimAyar />
 
       {isAdmin && (
         <div className="mt-10">

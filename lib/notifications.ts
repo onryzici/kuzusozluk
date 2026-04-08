@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendPushToUser } from "@/lib/web-push";
 
 type CreateNotificationInput = {
   type: "MENTION" | "REPLY" | "VOTE" | "FOLLOW" | "MESSAGE" | "TOPIC_ENTRY";
@@ -8,11 +9,34 @@ type CreateNotificationInput = {
   actorId: string; // who triggered it
 };
 
+const typeLabels: Record<string, string> = {
+  MENTION: "etiketleme",
+  REPLY: "yorum",
+  VOTE: "begeni",
+  FOLLOW: "takip",
+  MESSAGE: "mesaj",
+  TOPIC_ENTRY: "yeni entry",
+};
+
 export async function createNotification(input: CreateNotificationInput) {
   // Don't notify yourself
   if (input.userId === input.actorId) return;
 
-  await prisma.notification.create({ data: input });
+  const [notification, actor] = await Promise.all([
+    prisma.notification.create({ data: input }),
+    prisma.user.findUnique({ where: { id: input.actorId }, select: { username: true } }),
+  ]);
+
+  // Send push notification (fire-and-forget, don't block)
+  const label = typeLabels[input.type] || "";
+  sendPushToUser(input.userId, {
+    title: `kuzu sozluk - ${label}`,
+    body: `${actor?.username || "biri"}: ${input.content}`,
+    url: input.link || "/bildirimler",
+    tag: input.type,
+  }).catch(() => {});
+
+  return notification;
 }
 
 // Parse @mentions from text and create notifications

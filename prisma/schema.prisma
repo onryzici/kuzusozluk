@@ -49,6 +49,7 @@ model User {
   uploads        Upload[]      @relation("Uploader")
   auditLogs      AuditLog[]
   gameScores     GameScore[]
+  pushSubscriptions PushSubscription[]
 
   @@index([username])
   @@index([karma])
@@ -383,6 +384,20 @@ model GameScore {
   userId    String   @unique
 
   @@index([score])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @db.Text
+  p256dh    String   @db.VarChar(200)
+  auth      String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  @@unique([userId, endpoint])
+  @@index([userId])
 }
 
 model AuditLog {

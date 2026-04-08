@@ -110,8 +110,13 @@ export default function PacmanOyun({ onGameOver }: Props) {
     frame: 0,
     score: 0,
     lives: 3,
-    grid: [],
-    ghosts: [],
+    grid: generateMaze(),
+    ghosts: [
+      { x: COLS - 2, y: 1, dir: "left" as Dir, color: "#ff0000", speed: 0 },
+      { x: COLS - 2, y: ROWS - 2, dir: "up" as Dir, color: "#00ffff", speed: 0 },
+      { x: 1, y: ROWS - 2, dir: "right" as Dir, color: "#ffb8ff", speed: 0 },
+      { x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2), dir: "up" as Dir, color: "#ffb852", speed: 0 },
+    ],
     totalDots: 0,
     ghostSpeedBase: 8,
   });

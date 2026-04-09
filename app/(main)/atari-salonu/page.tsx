@@ -37,6 +37,12 @@ const oyunlar = [
     description: "meyveleri kes, bombalardan kac. 3 meyve kacirirsan biter!",
     emoji: "🍉",
   },
+  {
+    slug: "solucan",
+    title: "yilan seven solucan",
+    description: "yemekleri topla, buyumeye devam et. duvara carpma!",
+    emoji: "🐛",
+  },
 ];
 
 export default function AtariSalonuPage() {

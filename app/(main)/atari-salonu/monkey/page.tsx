@@ -59,9 +59,9 @@ export default function MonkeySayfa() {
       <div className="flex items-center gap-3 mb-6">
         <Gamepad2 className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-lg font-bold">korcu tokatla</h1>
+          <h1 className="text-lg font-bold">prenses korcagin'i döv</h1>
           <p className="text-xs text-muted-foreground">
-            eli surukleyip korcuyu tokatla. ne kadar hizli vurursan o kadar uzaga gider!
+            prenses korcagin'i tokatla. ne kadar hizli vurursan o kadar uzaga gider!
           </p>
         </div>
       </div>

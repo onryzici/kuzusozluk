@@ -555,7 +555,7 @@ export default function MonkeyOyun({ onGameOver }: Props) {
         ctx.fillStyle = "#fff";
         ctx.font = "bold 16px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("eli korcuya dogru surukle!", w / 2, h - 60);
+        ctx.fillText("prenses korcagin'i tokatla!", w / 2, h - 60);
         ctx.font = "12px sans-serif";
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.fillText("ne kadar uzaktan ve hizli vurursan carpan o kadar yuksek olur!", w / 2, h - 42);

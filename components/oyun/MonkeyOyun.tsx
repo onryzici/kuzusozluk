@@ -2,18 +2,18 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 
-const CANVAS_W = 600;
-const CANVAS_H = 350;
+const CANVAS_W = 800;
+const CANVAS_H = 400;
 
 // Monkey position
-const MONKEY_X = 80;
-const MONKEY_Y = 100;
+const MONKEY_X = 60;
+const MONKEY_Y = 110;
 const MONKEY_W = 90;
 const MONKEY_H = 130;
 
 // Hand (cursor) area
-const HAND_REST_X = 420;
-const HAND_REST_Y = 140;
+const HAND_REST_X = 600;
+const HAND_REST_Y = 160;
 const HAND_W = 70;
 const HAND_H = 70;
 
@@ -62,6 +62,8 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     // Trail
     trail: { x: number; y: number; alpha: number }[];
     bestSpeed: number;
+    multiplier: number;
+    swipeDistance: number;
   }>({
     gameState: "idle",
     handX: HAND_REST_X,
@@ -89,6 +91,8 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     stars: [],
     trail: [],
     bestSpeed: 0,
+    multiplier: 1,
+    swipeDistance: 0,
   });
 
   const [displayScore, setDisplayScore] = useState<number | null>(null);
@@ -116,6 +120,8 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     s.hitTimer = 0;
     s.stars = [];
     s.trail = [];
+    s.multiplier = 1;
+    s.swipeDistance = 0;
     setDisplayScore(null);
     setGameActive(true);
   }, []);
@@ -374,14 +380,27 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       // Distance meter
       const dist = Math.floor(s.maxDistance);
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 28px monospace";
+      ctx.font = "bold 30px monospace";
       ctx.textAlign = "center";
-      ctx.fillText(`${dist} km/s`, w / 2, 50);
+      ctx.fillText(`${dist} km/s`, w / 2, 45);
+
+      // Multiplier badge
+      if (s.multiplier > 1) {
+        const multText = `x${s.multiplier.toFixed(1)}`;
+        const multColor = s.multiplier >= 6 ? "#FF1744" : s.multiplier >= 4 ? "#FF9100" : s.multiplier >= 2.5 ? "#FFD700" : "#76FF03";
+        ctx.font = "bold 22px sans-serif";
+        ctx.fillStyle = multColor;
+        ctx.fillText(multText, w / 2, 72);
+        // Label
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillText("carpan", w / 2, 88);
+      }
 
       if (s.gameState === "result") {
         ctx.font = "bold 18px sans-serif";
         ctx.fillStyle = "#FFD700";
-        ctx.fillText("skorun kaydedildi!", w / 2, 80);
+        ctx.fillText("skorun kaydedildi!", w / 2, 115);
         ctx.font = "14px sans-serif";
         ctx.fillStyle = "#fff";
         ctx.fillText("tekrar oynamak icin tikla", w / 2, h - 55);
@@ -399,10 +418,10 @@ export default function MonkeyOyun({ onGameOver }: Props) {
         ctx.fillStyle = "#fff";
         ctx.font = "bold 16px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("eli maymuna dogru surukle!", w / 2, h - 55);
+        ctx.fillText("eli maymuna dogru surukle!", w / 2, h - 60);
         ctx.font = "12px sans-serif";
         ctx.fillStyle = "rgba(255,255,255,0.7)";
-        ctx.fillText("ne kadar hizli vurursan o kadar uzaga gider", w / 2, h - 38);
+        ctx.fillText("ne kadar uzaktan ve hizli vurursan carpan o kadar yuksek olur!", w / 2, h - 42);
       }
 
       if (s.gameState === "hit") {
@@ -466,9 +485,9 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       s.flyTime += dt;
       s.monkeyFlyX += s.monkeyFlyVX * dt;
       s.monkeyFlyY += s.monkeyFlyVY * dt;
-      s.monkeyFlyVY += 200 * dt; // gravity
+      s.monkeyFlyVY += 150 * dt; // gravity (lighter)
       s.monkeyRotation += s.monkeyRotSpeed * dt;
-      s.monkeyFlyVX *= (1 - 0.3 * dt); // air resistance
+      s.monkeyFlyVX *= (1 - 0.1 * dt); // air resistance (much less)
 
       // Add trail
       if (Math.random() < 0.3) {
@@ -483,7 +502,7 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       s.maxDistance = Math.max(s.maxDistance, s.monkeyFlyX - MONKEY_X);
 
       // Check if landed (below ground or stopped)
-      if (s.monkeyFlyY > CANVAS_H - 40 - MONKEY_H / 2 || s.flyTime > 5) {
+      if (s.monkeyFlyY > CANVAS_H - 40 - MONKEY_H / 2 || s.flyTime > 8) {
         s.gameState = "result";
         const score = Math.floor(s.maxDistance);
         s.score = score;
@@ -594,9 +613,19 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       handCenterY > HIT_Y &&
       handCenterY < HIT_Y + HIT_H
     ) {
-      // Calculate speed at impact
+      // Calculate speed at impact — no cap!
       const speed = Math.sqrt(s.velocityX * s.velocityX + s.velocityY * s.velocityY);
-      s.bestSpeed = Math.min(speed * 0.5, 800); // cap it
+      // Swipe distance: how far did the hand travel from start to monkey
+      const swipeDist = Math.sqrt(
+        (s.dragStartX - handCenterX) ** 2 + (s.dragStartY - handCenterY) ** 2
+      );
+      s.swipeDistance = swipeDist;
+      // Multiplier: longer swipe + higher speed = bigger multiplier
+      // Base: 1x, max depends on how far and fast you swipe
+      const distBonus = Math.min(swipeDist / 150, 3); // 0-3x from distance
+      const speedBonus = Math.min(speed / 1000, 4);   // 0-4x from speed
+      s.multiplier = 1 + distBonus + speedBonus;
+      s.bestSpeed = speed * 0.6 * s.multiplier; // no cap, multiplier amplifies
       s.isDragging = false;
       s.gameState = "hit";
       s.hitTimer = 0;
@@ -639,7 +668,7 @@ export default function MonkeyOyun({ onGameOver }: Props) {
         ref={canvasRef}
         width={CANVAS_W}
         height={CANVAS_H}
-        className="border border-border rounded-lg w-full max-w-[600px] cursor-pointer touch-none"
+        className="border border-border rounded-lg w-full max-w-[800px] cursor-pointer touch-none"
         style={{ imageRendering: "auto" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

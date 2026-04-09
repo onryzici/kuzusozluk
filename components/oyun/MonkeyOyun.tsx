@@ -131,34 +131,52 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     ctx.translate(x + MONKEY_W / 2, y + MONKEY_H / 2);
     ctx.rotate(rotation);
 
-    // Body
-    ctx.fillStyle = "#8B4513";
+    // === BJK JERSEY (black-white striped body) ===
+    // Body base
+    ctx.fillStyle = "#111";
     ctx.beginPath();
     ctx.ellipse(0, 15, 32, 45, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Belly
-    ctx.fillStyle = "#D2B48C";
+    // White stripes on jersey
+    ctx.save();
     ctx.beginPath();
-    ctx.ellipse(0, 20, 20, 30, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.ellipse(0, 15, 32, 45, 0, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "#fff";
+    for (let sx = -30; sx <= 30; sx += 14) {
+      ctx.fillRect(sx, -30, 7, 90);
+    }
+    ctx.restore();
 
-    // Head
-    ctx.fillStyle = "#8B4513";
+    // Jersey collar
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, -25, 12, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+
+    // BJK eagle badge (small)
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("★", 0, 5);
+
+    // Head (dark gray monkey)
+    ctx.fillStyle = "#333";
     ctx.beginPath();
     ctx.arc(0, -35, 28, 0, Math.PI * 2);
     ctx.fill();
 
-    // Face
-    ctx.fillStyle = "#D2B48C";
+    // Face (lighter gray)
+    ctx.fillStyle = "#888";
     ctx.beginPath();
     ctx.ellipse(0, -30, 20, 22, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Eyes
     if (hit) {
-      // X eyes when hit
-      ctx.strokeStyle = "#000";
+      ctx.strokeStyle = "#fff";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(-10, -38); ctx.lineTo(-4, -32);
@@ -169,31 +187,30 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       ctx.moveTo(10, -38); ctx.lineTo(4, -32);
       ctx.stroke();
     } else {
-      ctx.fillStyle = "#000";
-      ctx.beginPath();
-      ctx.arc(-8, -35, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(8, -35, 3, 0, Math.PI * 2);
-      ctx.fill();
-      // Pupils
       ctx.fillStyle = "#fff";
       ctx.beginPath();
-      ctx.arc(-7, -36, 1, 0, Math.PI * 2);
+      ctx.arc(-8, -35, 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(9, -36, 1, 0, Math.PI * 2);
+      ctx.arc(8, -35, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.arc(-7, -35, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(9, -35, 2, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // Mouth
     if (hit) {
-      ctx.fillStyle = "#000";
+      ctx.fillStyle = "#c00";
       ctx.beginPath();
       ctx.ellipse(0, -22, 8, 5, 0, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.strokeStyle = "#000";
+      ctx.strokeStyle = "#fff";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(0, -27, 6, 0.1 * Math.PI, 0.9 * Math.PI);
@@ -201,7 +218,7 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     }
 
     // Ears
-    ctx.fillStyle = "#D2B48C";
+    ctx.fillStyle = "#555";
     ctx.beginPath();
     ctx.arc(-28, -35, 8, 0, Math.PI * 2);
     ctx.fill();
@@ -209,12 +226,11 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     ctx.arc(28, -35, 8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Arms
-    ctx.strokeStyle = "#8B4513";
+    // Arms (dark)
+    ctx.strokeStyle = "#333";
     ctx.lineWidth = 8;
     ctx.lineCap = "round";
     if (hit) {
-      // Arms flailing
       ctx.beginPath();
       ctx.moveTo(-28, 0);
       ctx.lineTo(-45, -20);
@@ -234,18 +250,38 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       ctx.stroke();
     }
 
-    // Legs
+    // Black shorts
+    ctx.fillStyle = "#111";
     ctx.beginPath();
-    ctx.moveTo(-12, 50);
-    ctx.lineTo(-18, 65);
+    ctx.ellipse(0, 48, 22, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Legs (dark)
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(-12, 55);
+    ctx.lineTo(-18, 70);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(12, 50);
-    ctx.lineTo(18, 65);
+    ctx.moveTo(12, 55);
+    ctx.lineTo(18, 70);
+    ctx.stroke();
+
+    // White socks
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-18, 65);
+    ctx.lineTo(-18, 72);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(18, 65);
+    ctx.lineTo(18, 72);
     ctx.stroke();
 
     // Tail
-    ctx.strokeStyle = "#8B4513";
+    ctx.strokeStyle = "#333";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(-25, 40);
@@ -418,7 +454,7 @@ export default function MonkeyOyun({ onGameOver }: Props) {
         ctx.fillStyle = "#fff";
         ctx.font = "bold 16px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("eli maymuna dogru surukle!", w / 2, h - 60);
+        ctx.fillText("eli korcuya dogru surukle!", w / 2, h - 60);
         ctx.font = "12px sans-serif";
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.fillText("ne kadar uzaktan ve hizli vurursan carpan o kadar yuksek olur!", w / 2, h - 42);
@@ -429,7 +465,7 @@ export default function MonkeyOyun({ onGameOver }: Props) {
         ctx.fillStyle = "#FFD700";
         ctx.font = "bold 32px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("ŞAAAK!", MONKEY_X + MONKEY_W / 2 + 20, MONKEY_Y - 10);
+        ctx.fillText("TOKAAAT!", MONKEY_X + MONKEY_W / 2 + 20, MONKEY_Y - 10);
       }
     }
 

@@ -27,9 +27,9 @@ const oyunlar = [
   },
   {
     slug: "monkey",
-    title: "spank the monkey",
-    description: "eli surukle, maymuna vur. ne kadar hizli vurursan o kadar uzaga gider!",
-    emoji: "🐒",
+    title: "korcu tokatla",
+    description: "eli surukle, korcuyu tokatla. ne kadar hizli vurursan o kadar uzaga gider!",
+    emoji: "🦅",
   },
 ];
 

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const score = typeof body.score === "number" ? Math.floor(body.score) : 0;
   const game = typeof body.game === "string" ? body.game : "dino";
 
-  if (score <= 0 || score > 99999) {
+  if (score <= 0 || score > 9999999) {
     return NextResponse.json(
       { success: false, error: { code: "INVALID_SCORE", message: "Gecersiz skor" } },
       { status: 400 }

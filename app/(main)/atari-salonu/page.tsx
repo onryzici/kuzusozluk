@@ -25,6 +25,12 @@ const oyunlar = [
     description: "satirlari tamamla, seviye atla. klasik tetris deneyimi.",
     emoji: "🧱",
   },
+  {
+    slug: "monkey",
+    title: "spank the monkey",
+    description: "eli surukle, maymuna vur. ne kadar hizli vurursan o kadar uzaga gider!",
+    emoji: "🐒",
+  },
 ];
 
 export default function AtariSalonuPage() {

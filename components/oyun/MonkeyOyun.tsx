@@ -131,8 +131,26 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     ctx.translate(x + MONKEY_W / 2, y + MONKEY_H / 2);
     ctx.rotate(rotation);
 
-    // === BJK JERSEY (black-white striped body) ===
-    // Body base
+    // === LONG BLACK HAIR (behind body) ===
+    ctx.fillStyle = "#111";
+    // Left hair strand
+    ctx.beginPath();
+    ctx.moveTo(-22, -50);
+    ctx.quadraticCurveTo(-35, 0, -30, 55);
+    ctx.lineTo(-20, 55);
+    ctx.quadraticCurveTo(-25, 0, -15, -45);
+    ctx.closePath();
+    ctx.fill();
+    // Right hair strand
+    ctx.beginPath();
+    ctx.moveTo(22, -50);
+    ctx.quadraticCurveTo(35, 0, 30, 55);
+    ctx.lineTo(20, 55);
+    ctx.quadraticCurveTo(25, 0, 15, -45);
+    ctx.closePath();
+    ctx.fill();
+
+    // === BJK JERSEY (black body with BJK text) ===
     ctx.fillStyle = "#111";
     ctx.beginPath();
     ctx.ellipse(0, 15, 32, 45, 0, 0, Math.PI * 2);
@@ -149,6 +167,15 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     }
     ctx.restore();
 
+    // "BJK" text on jersey
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 3;
+    ctx.strokeText("BJK", 0, 10);
+    ctx.fillText("BJK", 0, 10);
+
     // Jersey collar
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
@@ -156,27 +183,66 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     ctx.arc(0, -25, 12, 0.2 * Math.PI, 0.8 * Math.PI);
     ctx.stroke();
 
-    // BJK eagle badge (small)
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 10px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("★", 0, 5);
-
-    // Head (dark gray monkey)
-    ctx.fillStyle = "#333";
+    // Head (dark gray)
+    ctx.fillStyle = "#444";
     ctx.beginPath();
     ctx.arc(0, -35, 28, 0, Math.PI * 2);
     ctx.fill();
 
-    // Face (lighter gray)
-    ctx.fillStyle = "#888";
+    // Hair on top of head (behind beanie)
+    ctx.fillStyle = "#111";
+    ctx.beginPath();
+    ctx.arc(0, -38, 29, Math.PI, 2 * Math.PI);
+    ctx.fill();
+
+    // Face (lighter)
+    ctx.fillStyle = "#999";
     ctx.beginPath();
     ctx.ellipse(0, -30, 20, 22, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // === BJK BEANIE ===
+    ctx.fillStyle = "#111";
+    ctx.beginPath();
+    ctx.ellipse(0, -52, 30, 14, 0, Math.PI, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillRect(-30, -55, 60, 10);
+    // Beanie fold
+    ctx.fillStyle = "#222";
+    ctx.fillRect(-28, -48, 56, 8);
+    // BJK logo on beanie
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("BJK", 0, -42);
+    // Beanie top pom-pom
+    ctx.fillStyle = "#333";
+    ctx.beginPath();
+    ctx.arc(0, -58, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Long hair flowing from under beanie
+    ctx.fillStyle = "#111";
+    // Left side hair
+    ctx.beginPath();
+    ctx.moveTo(-28, -45);
+    ctx.quadraticCurveTo(-38, -10, -32, 50);
+    ctx.lineTo(-25, 50);
+    ctx.quadraticCurveTo(-30, -10, -22, -42);
+    ctx.closePath();
+    ctx.fill();
+    // Right side hair
+    ctx.beginPath();
+    ctx.moveTo(28, -45);
+    ctx.quadraticCurveTo(38, -10, 32, 50);
+    ctx.lineTo(25, 50);
+    ctx.quadraticCurveTo(30, -10, 22, -42);
+    ctx.closePath();
+    ctx.fill();
+
     // Eyes
     if (hit) {
-      ctx.strokeStyle = "#fff";
+      ctx.strokeStyle = "#000";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(-10, -38); ctx.lineTo(-4, -32);
@@ -187,47 +253,85 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       ctx.moveTo(10, -38); ctx.lineTo(4, -32);
       ctx.stroke();
     } else {
+      // White eye circles
       ctx.fillStyle = "#fff";
       ctx.beginPath();
-      ctx.arc(-8, -35, 4, 0, Math.PI * 2);
+      ctx.arc(-8, -35, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(8, -35, 4, 0, Math.PI * 2);
+      ctx.arc(8, -35, 5, 0, Math.PI * 2);
       ctx.fill();
+      // Black pupils
       ctx.fillStyle = "#000";
       ctx.beginPath();
-      ctx.arc(-7, -35, 2, 0, Math.PI * 2);
+      ctx.arc(-7, -35, 2.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(9, -35, 2, 0, Math.PI * 2);
+      ctx.arc(9, -35, 2.5, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    // Mouth
-    if (hit) {
-      ctx.fillStyle = "#c00";
+      // Eyelashes (thick eyebrows like the photo)
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.ellipse(0, -22, 8, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 1.5;
+      ctx.moveTo(-14, -42);
+      ctx.lineTo(-3, -41);
+      ctx.stroke();
       ctx.beginPath();
-      ctx.arc(0, -27, 6, 0.1 * Math.PI, 0.9 * Math.PI);
+      ctx.moveTo(3, -41);
+      ctx.lineTo(14, -42);
       ctx.stroke();
     }
 
-    // Ears
-    ctx.fillStyle = "#555";
+    // Nose
+    ctx.fillStyle = "#777";
     ctx.beginPath();
-    ctx.arc(-28, -35, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(28, -35, 8, 0, Math.PI * 2);
+    ctx.ellipse(0, -28, 3, 2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Arms (dark)
-    ctx.strokeStyle = "#333";
+    // === PINK LIPS ===
+    if (hit) {
+      // Open mouth screaming
+      ctx.fillStyle = "#FF69B4";
+      ctx.beginPath();
+      ctx.ellipse(0, -21, 9, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Inner mouth
+      ctx.fillStyle = "#c00";
+      ctx.beginPath();
+      ctx.ellipse(0, -21, 6, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Closed pink lips
+      ctx.fillStyle = "#FF69B4";
+      // Upper lip
+      ctx.beginPath();
+      ctx.moveTo(-7, -22);
+      ctx.quadraticCurveTo(-3, -25, 0, -23);
+      ctx.quadraticCurveTo(3, -25, 7, -22);
+      ctx.quadraticCurveTo(3, -21, 0, -22);
+      ctx.quadraticCurveTo(-3, -21, -7, -22);
+      ctx.closePath();
+      ctx.fill();
+      // Lower lip
+      ctx.beginPath();
+      ctx.moveTo(-7, -22);
+      ctx.quadraticCurveTo(0, -17, 7, -22);
+      ctx.quadraticCurveTo(0, -19, -7, -22);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Ears
+    ctx.fillStyle = "#777";
+    ctx.beginPath();
+    ctx.arc(-28, -35, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(28, -35, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Arms (dark sleeves)
+    ctx.strokeStyle = "#111";
     ctx.lineWidth = 8;
     ctx.lineCap = "round";
     if (hit) {
@@ -250,14 +354,14 @@ export default function MonkeyOyun({ onGameOver }: Props) {
       ctx.stroke();
     }
 
-    // Black shorts
+    // Black pants
     ctx.fillStyle = "#111";
     ctx.beginPath();
     ctx.ellipse(0, 48, 22, 12, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Legs (dark)
-    ctx.strokeStyle = "#333";
+    // Legs
+    ctx.strokeStyle = "#111";
     ctx.lineWidth = 8;
     ctx.beginPath();
     ctx.moveTo(-12, 55);
@@ -268,20 +372,17 @@ export default function MonkeyOyun({ onGameOver }: Props) {
     ctx.lineTo(18, 70);
     ctx.stroke();
 
-    // White socks
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 6;
+    // Shoes
+    ctx.fillStyle = "#222";
     ctx.beginPath();
-    ctx.moveTo(-18, 65);
-    ctx.lineTo(-18, 72);
-    ctx.stroke();
+    ctx.ellipse(-18, 73, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(18, 65);
-    ctx.lineTo(18, 72);
-    ctx.stroke();
+    ctx.ellipse(18, 73, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Tail
-    ctx.strokeStyle = "#333";
+    ctx.strokeStyle = "#444";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(-25, 40);

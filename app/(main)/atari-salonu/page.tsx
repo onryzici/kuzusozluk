@@ -31,6 +31,12 @@ const oyunlar = [
     description: "prenses korcagin'i tokatla. ne kadar hizli vurursan o kadar uzaga gider!",
     emoji: "🦅",
   },
+  {
+    slug: "fruit-ninja",
+    title: "fruit ninja",
+    description: "meyveleri kes, bombalardan kac. 3 meyve kacirirsan biter!",
+    emoji: "🍉",
+  },
 ];
 
 export default function AtariSalonuPage() {

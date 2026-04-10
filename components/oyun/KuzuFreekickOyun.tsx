@@ -13,19 +13,74 @@ const BALL_START_Y = 1000;
 const WALL_Y = 600; // duvarın yeri
 const GOAL_Y = 0;
 
-// Goal boyutu (dünya birimi) — ilk leveller daha büyük, lvl 8+ sabit
+// Goal boyutu — lvl 1 büyük, lvl 12+ sabit minimum
 const GOAL_WIDTH_MAX = 400;
 const GOAL_HEIGHT_MAX = 160;
-const GOAL_WIDTH_MIN = 280;
-const GOAL_HEIGHT_MIN = 110;
+const GOAL_WIDTH_MIN = 250;
+const GOAL_HEIGHT_MIN = 100;
 
 function getGoalSize(level: number) {
-  // lvl 1 → max, lvl 8+ → min, arada lineer küçülür
-  const t = Math.min(1, Math.max(0, (level - 1) / 7));
+  const t = Math.min(1, Math.max(0, (level - 1) / 11));
   return {
     width: GOAL_WIDTH_MAX - (GOAL_WIDTH_MAX - GOAL_WIDTH_MIN) * t,
     height: GOAL_HEIGHT_MAX - (GOAL_HEIGHT_MAX - GOAL_HEIGHT_MIN) * t,
   };
+}
+
+// Senaryolar: her vuruşta rastgele biri seçilir
+type Scenario = {
+  id: string;
+  name: string;
+  ballX: number; // top başlangıç lateral pozisyonu
+  bonus: number; // gol başarınca ekstra puan
+  weight: number;
+};
+
+const SCENARIOS: Scenario[] = [
+  { id: "duz", name: "düz vuruş", ballX: 0, bonus: 0, weight: 4 },
+  { id: "saci", name: "sağ açı", ballX: 70, bonus: 25, weight: 3 },
+  { id: "loi", name: "sol açı", ballX: -70, bonus: 25, weight: 3 },
+  { id: "skose", name: "sağ köşe", ballX: 135, bonus: 60, weight: 2 },
+  { id: "lkose", name: "sol köşe", ballX: -135, bonus: 60, weight: 2 },
+  { id: "uzak", name: "uzaktan", ballX: 0, bonus: 80, weight: 1 },
+];
+
+function getWallCount(level: number): number {
+  // lvl 1-2: 0, lvl 3: 1, lvl 4: 1, lvl 5: 2, lvl 6: 3, lvl 7: 4, lvl 8: 5, lvl 10+: 6
+  if (level < 3) return 0;
+  if (level < 5) return 1;
+  if (level < 6) return 2;
+  if (level < 7) return 3;
+  if (level < 8) return 4;
+  if (level < 10) return 5;
+  return 6;
+}
+
+function pickScenario(level: number): Scenario {
+  // İlk lvl'larda daha çok düz vuruş, sonra çeşit artar
+  const variety = Math.min(1, (level - 1) / 6);
+  const weighted = SCENARIOS.map((s) => {
+    let w = s.weight;
+    if (s.id === "duz") w = w * (1 - variety * 0.6);
+    else w = w * (0.4 + variety);
+    return { s, w };
+  });
+  const total = weighted.reduce((a, b) => a + b.w, 0);
+  let r = Math.random() * total;
+  for (const ws of weighted) {
+    r -= ws.w;
+    if (r <= 0) return ws.s;
+  }
+  return SCENARIOS[0];
+}
+
+// Goal callout tier'ları (bonus'a göre)
+function goalCallout(bonus: number): { text: string; color: string; size: number } {
+  if (bonus >= 400) return { text: "DÜNYA GOLÜ! ⚽", color: "#ffd700", size: 38 };
+  if (bonus >= 300) return { text: "GOLAZO!", color: "#ff8800", size: 34 };
+  if (bonus >= 200) return { text: "SÜPER GOL!", color: "#ffaa00", size: 30 };
+  if (bonus >= 130) return { text: "GÜZEL GOL!", color: "#5dd95d", size: 26 };
+  return { text: "GOL!", color: "#5dd95d", size: 24 };
 }
 
 // Fizik
@@ -83,13 +138,46 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
 
   // Reticle / oscillating bars
   const reticleRef = useRef({ x: 0, y: 60, vx: 130, vy: 80 });
-  const powerBarRef = useRef({ value: 0, dir: 1 });
-  const curveBarRef = useRef({ value: 0, dir: 1 });
+  const powerBarRef = useRef({
+    value: 0,
+    dir: 1,
+    sweetCenter: 0.7,
+    sweetWidth: 0.18,
+  });
+  const curveBarRef = useRef({
+    value: 0,
+    dir: 1,
+    sweetCenter: 0,
+    sweetWidth: 0.25,
+  });
 
   // Lock'lanmış değerler
   const lockedAimRef = useRef({ x: 0, z: 60 });
   const lockedPowerRef = useRef(0);
   const lockedCurveRef = useRef(0);
+  // Toplam isabet puanı (0..1) — sweet spot'lardan gelir, top inaccuracy'sini etkiler
+  const accuracyRef = useRef(1);
+
+  // Aktif senaryo
+  const scenarioRef = useRef<Scenario>(SCENARIOS[0]);
+
+  // Skor animasyonu (akan numara için)
+  const displayScoreRef = useRef(0);
+
+  // Net bulge animasyonu (gol olunca)
+  const netBulgeRef = useRef<{ x: number; z: number; intensity: number } | null>(null);
+
+  // Konfeti / particle system
+  const particlesRef = useRef<{ x: number; y: number; vx: number; vy: number; color: string; life: number; size: number }[]>([]);
+
+  // Ekran flash (gol olunca beyaz parlak)
+  const flashRef = useRef(0);
+
+  // Replay trail (son şutun trajektorisi result fazında gösterilir)
+  const replayTrailRef = useRef<{ x: number; y: number; z: number }[]>([]);
+
+  // Crowd wave animasyonu için faz
+  const crowdPhaseRef = useRef(0);
 
   // Top fiziği
   const ballRef = useRef({
@@ -138,17 +226,41 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
   // ============================================================
   const resetForNextShot = useCallback(() => {
     phaseRef.current = "ready";
-    const gs = getGoalSize(levelRef.current);
+    const lvl = levelRef.current;
+    const gs = getGoalSize(lvl);
+
+    // Yeni senaryo seç
+    const scenario = pickScenario(lvl);
+    scenarioRef.current = scenario;
+
+    // Reticle hızı (lvl'a göre çok daha hızlı)
+    const retSpeedMul = 1 + (lvl - 1) * 0.18;
     reticleRef.current = {
-      x: 0,
+      x: scenario.ballX * 0.3, // başlangıç biraz senaryoya yakın
       y: gs.height * 0.5,
-      vx: 95 + Math.random() * 50,
-      vy: 55 + Math.random() * 30,
+      vx: (110 + Math.random() * 60) * retSpeedMul,
+      vy: (70 + Math.random() * 40) * retSpeedMul,
     };
-    powerBarRef.current = { value: 0, dir: 1 };
-    curveBarRef.current = { value: 0, dir: 1 };
+
+    // Sweet spot zone'ları — yüksek lvl'da küçülür
+    const sweetShrink = Math.max(0.35, 1 - (lvl - 1) * 0.08);
+    powerBarRef.current = {
+      value: 0,
+      dir: 1,
+      sweetCenter: 0.55 + Math.random() * 0.35, // 0.55..0.90 arasında
+      sweetWidth: 0.22 * sweetShrink, // lvl 1: 0.22, lvl 10+: 0.077
+    };
+    curveBarRef.current = {
+      value: 0,
+      dir: 1,
+      sweetCenter: (Math.random() - 0.5) * 1.6, // -0.8..+0.8
+      sweetWidth: 0.30 * sweetShrink,
+    };
+
+    accuracyRef.current = 1;
+
     ballRef.current = {
-      x: 0,
+      x: scenario.ballX,
       y: BALL_START_Y,
       z: 0,
       vx: 0,
@@ -161,8 +273,9 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       landed: false,
       trail: [],
     };
+
     const k = keeperRef.current;
-    k.x = (Math.random() - 0.5) * 60;
+    k.x = (Math.random() - 0.5) * 50;
     k.targetX = 0;
     k.targetZ = gs.height * 0.4;
     k.diveX = k.x;
@@ -170,18 +283,24 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     k.diving = false;
     k.diveTimer = 0;
     k.commitTimer = 0;
+
     kuzuRef.current.kickPhase = 0;
+    netBulgeRef.current = null;
+    replayTrailRef.current = [];
   }, []);
 
   const startGame = useCallback(() => {
     scoreRef.current = 0;
+    displayScoreRef.current = 0;
     goalsRef.current = 0;
     missesRef.current = 0;
     levelRef.current = 1;
     comboRef.current = 0;
     floatsRef.current = [];
+    particlesRef.current = [];
     resultRef.current = null;
     windRef.current = 0;
+    flashRef.current = 0;
     resetForNextShot();
     setRunning(true);
   }, [resetForNextShot]);
@@ -204,13 +323,46 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     }
 
     if (phase === "power") {
-      lockedPowerRef.current = powerBarRef.current.value;
+      const p = powerBarRef.current;
+      lockedPowerRef.current = p.value;
+      // Sweet spot kontrolü
+      const distFromSweet = Math.abs(p.value - p.sweetCenter);
+      const inSweet = distFromSweet <= p.sweetWidth / 2;
+      // Accuracy katkısı: sweet içindeyse 1, dışındaysa mesafeye göre düşer
+      const acc = inSweet ? 1 : Math.max(0, 1 - (distFromSweet - p.sweetWidth / 2) * 3);
+      accuracyRef.current *= acc;
+      // Sweet spot tıklarsa görsel feedback
+      if (inSweet) {
+        floatsRef.current.push({
+          x: CANVAS_W - 50,
+          y: 280,
+          text: "PERFECT!",
+          color: "#5dd95d",
+          vy: -1.2,
+          life: 1.2,
+        });
+      }
       phaseRef.current = "curve";
       return;
     }
 
     if (phase === "curve") {
-      lockedCurveRef.current = curveBarRef.current.value;
+      const c = curveBarRef.current;
+      lockedCurveRef.current = c.value;
+      const distFromSweet = Math.abs(c.value - c.sweetCenter);
+      const inSweet = distFromSweet <= c.sweetWidth / 2;
+      const acc = inSweet ? 1 : Math.max(0, 1 - (distFromSweet - c.sweetWidth / 2) * 2);
+      accuracyRef.current *= acc;
+      if (inSweet) {
+        floatsRef.current.push({
+          x: CANVAS_W / 2,
+          y: CANVAS_H - 110,
+          text: "PERFECT!",
+          color: "#5dd95d",
+          vy: -1.2,
+          life: 1.2,
+        });
+      }
       phaseRef.current = "flying";
       // Atışı başlat
       launchBall();
@@ -236,14 +388,26 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     const aim = lockedAimRef.current;
     const power = lockedPowerRef.current; // 0..1
     const curve = lockedCurveRef.current; // -1..1
+    const accuracy = accuracyRef.current; // 0..1
+    const scenario = scenarioRef.current;
 
     const speed = 700 + power * 750; // unit/s
     const dy = -BALL_START_Y; // hedef y = 0
     const flightTime = Math.abs(dy) / speed;
 
+    // Inaccuracy: sweet spot'lardan uzaklaştıkça nişanı bozar
+    const inacc = (1 - accuracy) * 80;
+    const inaccX = (Math.random() - 0.5) * 2 * inacc;
+    const inaccZ = (Math.random() - 0.5) * 2 * inacc * 0.5;
+
+    // Hedef = kale içinde nişan; topun gerçek x'i scenario.ballX'ten başlar
+    const targetX = aim.x + inaccX;
+    const targetZ = Math.max(5, aim.z + inaccZ);
+
+    const dx = targetX - scenario.ballX;
     const vy = dy / flightTime;
-    const vx = aim.x / flightTime;
-    const vz = (aim.z + 0.5 * GRAVITY * flightTime * flightTime) / flightTime;
+    const vx = dx / flightTime;
+    const vz = (targetZ + 0.5 * GRAVITY * flightTime * flightTime) / flightTime;
 
     const b = ballRef.current;
     b.vx = vx;
@@ -251,7 +415,7 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     b.vz = vz;
     b.swerve = curve * 220; // magnus lateral force
     b.spin = curve;
-    b.x = 0;
+    b.x = scenario.ballX;
     b.y = BALL_START_Y;
     b.z = 0;
     b.wallChecked = false;
@@ -264,58 +428,63 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     // ================================================================
     const k = keeperRef.current;
     const lvl = levelRef.current;
-    const skill = Math.min(1, Math.max(0, (lvl - 1) / 9)); // 0..1 (lvl 10+ tam)
+    // Skill curve: lvl 1-15 tam doluyor (önceden 1-10), sınırsız level destekler
+    const skill = Math.min(1, Math.max(0, (lvl - 1) / 14));
     const gs = getGoalSize(lvl);
 
-    // Reaksiyon süresi: yüksek lvl daha hızlı, güçlü şut biraz geç algılanır
-    const baseReact = 0.34 - skill * 0.20; // 0.34 → 0.14
-    const powerLag = power * 0.07;
-    k.diveTimer = baseReact + powerLag;
+    // Reaksiyon süresi: agresif scaling
+    const baseReact = 0.32 - skill * 0.24; // 0.32 → 0.08
+    const powerLag = power * 0.05;
+    k.diveTimer = Math.max(0.05, baseReact + powerLag);
 
-    // Uzanma hızı: yüksek lvl daha hızlı sıçrar
-    k.reachSpeed = 0.85 + skill * 0.75; // 0.85 → 1.60
+    // Uzanma hızı: çok daha agresif
+    k.reachSpeed = 0.95 + skill * 1.05; // 0.95 → 2.00
 
-    // Save reach radius: yüksek lvl daha geniş alan kapatır
-    k.saveRadius = 30 + skill * 14; // 30 → 44
+    // Save reach radius: lvl 1'de 32, lvl 15+'de 50
+    k.saveRadius = 32 + skill * 18;
 
-    // Tahmin hatası: düşük lvl çok yanlış sıçrar
-    const errorMag = (1 - skill) * 100 + 14;
+    // Tahmin hatası: agresif düşer
+    const errorMag = (1 - skill) * 95 + 8;
     let predX = aim.x + (Math.random() - 0.5) * errorMag;
-    let predZ = aim.z + (Math.random() - 0.5) * errorMag * 0.45;
+    let predZ = aim.z + (Math.random() - 0.5) * errorMag * 0.4;
 
-    // Üst köşe penaltisi: kale tavanına uzanmak zor
-    const topRatio = aim.z / gs.height;
-    if (topRatio > 0.65) k.reachSpeed *= 0.78;
-    if (topRatio > 0.85) k.reachSpeed *= 0.88;
-
-    // Köşe tahmini: çok yan şutlarda yüksek lvl kaleci doğru yöne meyleder
-    if (skill > 0.3) {
-      const sideHint = Math.sign(aim.x) * gs.width * 0.18 * skill;
-      predX = predX * 0.7 + sideHint * 0.3;
+    // Top kalitesi etkisi: oyuncu sweet spot'ları kaçırırsa kaleci avantaj kazanır
+    if (accuracy < 0.7) {
+      // Inaccuracy kaleciye fayda — top zaten kayıyor
+      predX = predX * 0.5 + (aim.x + inaccX) * 0.5;
     }
 
-    // Falso algılama: lvl 4+ kısmen falso yönünü hesaplar
-    const detectsCurve = skill > 0.3 && Math.random() < skill * 0.85;
+    // Üst köşe penaltisi: kale tavanına uzanmak zor (daha hafifletildi — keeper güçlendi)
+    const topRatio = aim.z / gs.height;
+    if (topRatio > 0.7) k.reachSpeed *= 0.82;
+    if (topRatio > 0.88) k.reachSpeed *= 0.88;
+
+    // Yan şut tahmini: lvl 2+ doğru yöne meyleder
+    if (skill > 0.15) {
+      const sideHint = Math.sign(aim.x) * gs.width * 0.22 * skill;
+      predX = predX * 0.6 + sideHint * 0.4;
+    }
+
+    // Falso algılama: lvl 3+ yüksek ihtimalle algılar
+    const detectsCurve = skill > 0.18 && Math.random() < 0.4 + skill * 0.55;
     if (detectsCurve) {
-      // Falso topu yan tarafa götürür → uzanmayı buna göre ayarla
-      const curveDrift = curve * 90 * skill;
+      const curveDrift = curve * 110 * (0.5 + skill * 0.5);
       predX += curveDrift;
     }
 
-    // Sınır: kaleci kale dışına uzanmaz
-    const maxReachX = gs.width / 2 + 25;
+    // Sınır
+    const maxReachX = gs.width / 2 + 30;
     predX = Math.max(-maxReachX, Math.min(maxReachX, predX));
-    predZ = Math.max(0, Math.min(gs.height + 10, predZ));
+    predZ = Math.max(0, Math.min(gs.height + 12, predZ));
 
     k.targetX = predX;
     k.targetZ = predZ;
     k.diveX = k.x;
     k.diveZ = 0;
     k.diving = false;
-    // Tracking: lvl 4+ uçuş esnasında topa kısmen reaksiyon verir
-    k.tracks = skill > 0.3;
-    // Commit timer: tracking'den sonra kaleci son yarıda hedefe kilitlenir
-    k.commitTimer = 0.55;
+    // Tracking lvl 3+ ve daha güçlü
+    k.tracks = skill > 0.15;
+    k.commitTimer = 0.50 + skill * 0.20; // yüksek lvl daha uzun izler
 
     // Kuzu vuruş animasyonu
     kuzuRef.current.kickPhase = 1;
@@ -335,40 +504,84 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     if (type === "goal") {
       bonus = 100;
       const gs = getGoalSize(levelRef.current);
+      const scenario = scenarioRef.current;
+      const accuracy = accuracyRef.current;
+      const lvl = levelRef.current;
+
       // Üst köşe bonusu
       if (aim.z > gs.height * 0.6) bonus += 30;
       if (Math.abs(aim.x) > gs.width * 0.32) bonus += 40;
-      if (Math.abs(aim.x) > gs.width * 0.32 && aim.z > gs.height * 0.6) bonus += 50; // üst köşe
+      if (Math.abs(aim.x) > gs.width * 0.32 && aim.z > gs.height * 0.6) bonus += 60; // üst köşe
       // Güç bonusu
-      bonus += Math.floor(power * 30);
+      bonus += Math.floor(power * 40);
       // Falso bonusu
       if (curve > 0.3) bonus += 30;
-      if (curve > 0.6) bonus += 30;
+      if (curve > 0.6) bonus += 40;
+      // Sweet spot perfect bonusu
+      if (accuracy >= 0.99) bonus += 60;
+      // Senaryo bonusu (köşe vuruşu, açı vs.)
+      bonus += scenario.bonus;
+      // Worldie: üst köşe + falso + power = mega bonus
+      if (aim.z > gs.height * 0.7 && Math.abs(aim.x) > gs.width * 0.35 && curve > 0.5 && power > 0.6) {
+        bonus += 150;
+      }
+      // Level çarpanı (yüksek lvl'da daha çok puan)
+      const lvlMult = 1 + Math.max(0, lvl - 4) * 0.08;
+      bonus = Math.floor(bonus * lvlMult);
       // Combo
       comboRef.current += 1;
-      if (comboRef.current >= 3) bonus = Math.floor(bonus * 1.5);
-      if (comboRef.current >= 5) bonus = Math.floor(bonus * 1.3);
+      let comboMult = 1;
+      if (comboRef.current >= 3) comboMult = 1.4;
+      if (comboRef.current >= 5) comboMult = 1.7;
+      if (comboRef.current >= 8) comboMult = 2.0;
+      if (comboRef.current >= 12) comboMult = 2.5;
+      bonus = Math.floor(bonus * comboMult);
 
       scoreRef.current += bonus;
       goalsRef.current += 1;
-      text = comboRef.current >= 3 ? `GOL! x${comboRef.current} +${bonus}` : `GOL! +${bonus}`;
-      color = "#5dd95d";
 
-      // Level artışı
+      const callout = goalCallout(bonus);
+      text = comboRef.current >= 3 ? `${callout.text} x${comboRef.current}` : callout.text;
+      color = callout.color;
+
+      // Görsel efektler: net bulge, konfeti, ekran flash
+      const ballX = ballRef.current.x;
+      const ballZ = ballRef.current.z;
+      netBulgeRef.current = { x: ballX, z: ballZ, intensity: 1 };
+      flashRef.current = 0.5;
+      // Konfeti: rastgele renkli partiküller
+      const goalScreen = project(ballX, GOAL_Y, ballZ);
+      const colors = ["#ff3333", "#5dd95d", "#5b9eff", "#ffd700", "#c264ff", "#ff8800"];
+      for (let i = 0; i < 60; i++) {
+        particlesRef.current.push({
+          x: goalScreen.x,
+          y: goalScreen.y,
+          vx: (Math.random() - 0.5) * 8,
+          vy: -3 - Math.random() * 5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 1.5 + Math.random() * 1,
+          size: 3 + Math.random() * 4,
+        });
+      }
+
+      // Replay trail kaydet
+      replayTrailRef.current = [...ballRef.current.trail];
+
+      // Level artışı (sınırsız)
       const newLevel = Math.floor(goalsRef.current / 3) + 1;
       if (newLevel > levelRef.current) {
         levelRef.current = newLevel;
         floatsRef.current.push({
           x: CANVAS_W / 2,
-          y: 80,
+          y: 100,
           text: `LEVEL ${newLevel}!`,
           color: "#ffd700",
           vy: -1.5,
-          life: 2,
+          life: 2.5,
         });
-        // Rüzgar level 4+
-        if (newLevel >= 4) {
-          windRef.current = (Math.random() - 0.5) * 0.8;
+        // Rüzgar lvl 3+
+        if (newLevel >= 3) {
+          windRef.current = (Math.random() - 0.5) * (0.5 + (newLevel - 3) * 0.12);
         }
       }
     } else {
@@ -414,9 +627,12 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       onGameOver(scoreRef.current);
       return;
     }
-    // Yeni rüzgar
-    if (levelRef.current >= 4 && Math.random() < 0.5) {
-      windRef.current = (Math.random() - 0.5) * (0.4 + levelRef.current * 0.1);
+    // Yeni rüzgar — lvl 3+ olası, lvl arttıkça daha sık ve daha güçlü
+    const lvl = levelRef.current;
+    if (lvl >= 3 && Math.random() < 0.35 + lvl * 0.04) {
+      windRef.current = (Math.random() - 0.5) * (0.4 + lvl * 0.1);
+    } else if (lvl >= 3) {
+      windRef.current = 0;
     }
     resultRef.current = null;
     resetForNextShot();
@@ -477,10 +693,10 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
         }
       }
 
-      // Power bar (power fazı)
+      // Power bar (power fazı) — yüksek lvl çok daha hızlı
       if (phase === "power") {
         const p = powerBarRef.current;
-        const speed = 1.3 + (levelRef.current - 1) * 0.08;
+        const speed = 1.4 + (levelRef.current - 1) * 0.14;
         p.value += p.dir * speed * dt;
         if (p.value >= 1) {
           p.value = 1;
@@ -495,7 +711,7 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       // Curve bar (curve fazı)
       if (phase === "curve") {
         const c = curveBarRef.current;
-        const speed = 1.5 + (levelRef.current - 1) * 0.10;
+        const speed = 1.6 + (levelRef.current - 1) * 0.16;
         c.value += c.dir * speed * dt;
         if (c.value >= 1) {
           c.value = 1;
@@ -544,10 +760,9 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
         // Duvar çarpışması
         if (!b.wallChecked && b.y <= WALL_Y) {
           b.wallChecked = true;
-          // Duvar boyutu level'a göre — lvl 1-2 duvarsız, sonra kademeli
-          const wallCount = Math.min(5, Math.max(0, levelRef.current - 2));
+          const wallCount = getWallCount(levelRef.current);
           const wallWidth = wallCount * 36;
-          const wallHeight = Math.min(96, 70 + levelRef.current * 3);
+          const wallHeight = Math.min(105, 70 + levelRef.current * 3.5);
           if (wallCount > 0 && Math.abs(b.x) < wallWidth / 2 && b.z < wallHeight && b.z > 0) {
             // Çarptı
             b.vy = -b.vy * 0.3;
@@ -632,6 +847,34 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       }
       floatsRef.current = floatsRef.current.filter((f) => f.life > 0);
 
+      // Konfeti partikülleri
+      for (const p of particlesRef.current) {
+        p.vy += 18 * dt; // gravity
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= dt;
+      }
+      particlesRef.current = particlesRef.current.filter((p) => p.life > 0);
+
+      // Net bulge decay
+      if (netBulgeRef.current) {
+        netBulgeRef.current.intensity -= dt * 1.2;
+        if (netBulgeRef.current.intensity <= 0) netBulgeRef.current = null;
+      }
+
+      // Flash decay
+      if (flashRef.current > 0) flashRef.current -= dt * 1.8;
+
+      // Smooth score animasyonu
+      if (displayScoreRef.current < scoreRef.current) {
+        const diff = scoreRef.current - displayScoreRef.current;
+        const tickRate = Math.max(1, Math.ceil(diff * dt * 6));
+        displayScoreRef.current = Math.min(scoreRef.current, displayScoreRef.current + tickRate);
+      }
+
+      // Crowd wave
+      crowdPhaseRef.current += dt * 1.5;
+
       // Shake decay
       if (shakeRef.current > 0) shakeRef.current -= dt;
 
@@ -661,16 +904,20 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
 
     drawStadium(ctx);
     drawField(ctx);
+    drawReplayTrail(ctx);
     drawGoal(ctx);
     drawWall(ctx);
     drawKeeper(ctx);
     drawKuzu(ctx);
     drawBall(ctx);
     drawWindFlag(ctx);
+    drawParticles(ctx);
 
     ctx.restore();
 
+    drawScreenFlash(ctx);
     drawHUD(ctx);
+    drawScenarioLabel(ctx);
     drawPhaseUI(ctx);
     drawFloats(ctx);
     drawResultOverlay(ctx);
@@ -767,26 +1014,54 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     ctx.closePath();
     ctx.fill();
 
-    // Ağ ızgarası
+    // Ağ ızgarası — net bulge'a göre çarpıtılır
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.lineWidth = 1;
     const cols = 14;
     const rows = 8;
+
+    const bulge = netBulgeRef.current;
+    let bulgeScreen: { x: number; y: number } | null = null;
+    if (bulge) {
+      bulgeScreen = project(bulge.x, GOAL_Y, bulge.z);
+    }
+
+    function distortPoint(x: number, y: number) {
+      if (!bulge || !bulgeScreen) return { x, y };
+      const dx = x - bulgeScreen.x;
+      const dy = y - bulgeScreen.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      const radius = 50;
+      if (d > radius) return { x, y };
+      const f = (1 - d / radius) * bulge.intensity * 18;
+      // İçeriye doğru itme (kameradan uzaklaştırma efekti yerine yanlara açma)
+      return {
+        x: x + (dx / Math.max(1, d)) * f * 0.3,
+        y: y + (dy / Math.max(1, d)) * f * 0.3,
+      };
+    }
+
     for (let i = 1; i < cols; i++) {
       const t = i / cols;
       const x1 = tl.x + (tr.x - tl.x) * t;
       const x2 = bl.x + (br.x - bl.x) * t;
+      const p1 = distortPoint(x1, tl.y);
+      const p2 = distortPoint(x2, bl.y);
       ctx.beginPath();
-      ctx.moveTo(x1, tl.y);
-      ctx.lineTo(x2, bl.y);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
       ctx.stroke();
     }
     for (let j = 1; j < rows; j++) {
       const t = j / rows;
       const y1 = tl.y + (bl.y - tl.y) * t;
+      const xs = tl.x + (bl.x - tl.x) * t;
+      const xe = tr.x + (br.x - tr.x) * t;
+      const p1 = distortPoint(xs, y1);
+      const p2 = distortPoint(xe, y1);
       ctx.beginPath();
-      ctx.moveTo(tl.x + (bl.x - tl.x) * t, y1);
-      ctx.lineTo(tr.x + (br.x - tr.x) * t, y1);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
       ctx.stroke();
     }
 
@@ -812,9 +1087,9 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
 
   // ===== Duvar (defansörler) =====
   function drawWall(ctx: CanvasRenderingContext2D) {
-    const wallCount = Math.min(5, Math.max(0, levelRef.current - 2));
+    const wallCount = getWallCount(levelRef.current);
     if (wallCount === 0) return;
-    const wallHeight = Math.min(96, 70 + levelRef.current * 3);
+    const wallHeight = Math.min(105, 70 + levelRef.current * 3.5);
     const totalW = wallCount * 36;
     for (let i = 0; i < wallCount; i++) {
       const wx = -totalW / 2 + 18 + i * 36;
@@ -1112,41 +1387,144 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     ctx.fillText("rüzgar", wx, wy + 10);
   }
 
+  // ===== Konfeti partikülleri =====
+  function drawParticles(ctx: CanvasRenderingContext2D) {
+    for (const p of particlesRef.current) {
+      ctx.globalAlpha = Math.min(1, p.life);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ===== Replay trail (gol attıktan sonra son trajektori) =====
+  function drawReplayTrail(ctx: CanvasRenderingContext2D) {
+    if (phaseRef.current !== "result") return;
+    if (replayTrailRef.current.length < 2) return;
+    if (resultRef.current?.type !== "goal") return;
+    ctx.strokeStyle = "rgba(255, 215, 0, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    for (let i = 0; i < replayTrailRef.current.length; i++) {
+      const t = replayTrailRef.current[i];
+      const p = project(t.x, t.y, t.z);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ===== Ekran flash (gol olunca beyaz parlak) =====
+  function drawScreenFlash(ctx: CanvasRenderingContext2D) {
+    if (flashRef.current <= 0) return;
+    ctx.fillStyle = `rgba(255, 255, 255, ${flashRef.current * 0.5})`;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  }
+
+  // ===== Senaryo etiketi (HUD altında) =====
+  function drawScenarioLabel(ctx: CanvasRenderingContext2D) {
+    const phase = phaseRef.current;
+    if (phase !== "ready" && phase !== "aim" && phase !== "power" && phase !== "curve") return;
+    const s = scenarioRef.current;
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(CANVAS_W - 170, 42, 160, 24);
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(CANVAS_W - 170, 42, 160, 24);
+    ctx.fillStyle = "#daa520";
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`◆ ${s.name}`, CANVAS_W - 12, 58);
+    if (s.bonus > 0) {
+      ctx.fillStyle = "#5dd95d";
+      ctx.textAlign = "left";
+      ctx.font = "bold 9px monospace";
+      ctx.fillText(`+${s.bonus}`, CANVAS_W - 165, 58);
+    }
+  }
+
   // ===== HUD (üst) =====
   function drawHUD(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
-    ctx.fillRect(0, 0, CANVAS_W, 36);
+    // Üst bar arka plan
+    const grad = ctx.createLinearGradient(0, 0, 0, 42);
+    grad.addColorStop(0, "rgba(0,0,0,0.85)");
+    grad.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CANVAS_W, 42);
 
+    // Skor (smooth tick) — büyük
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 14px monospace";
+    ctx.font = "bold 22px monospace";
     ctx.textAlign = "left";
-    ctx.fillText(`SKOR ${scoreRef.current}`, 12, 23);
+    const scoreStr = displayScoreRef.current.toString().padStart(6, "0");
+    ctx.fillText(scoreStr, 12, 28);
 
+    // Skor etiketi
+    ctx.fillStyle = "#888";
+    ctx.font = "9px monospace";
+    ctx.fillText("SKOR", 12, 38);
+
+    // Goller
     ctx.fillStyle = "#daa520";
-    ctx.fillText(`⚽ ${goalsRef.current}`, 150, 23);
+    ctx.font = "bold 14px monospace";
+    ctx.fillText(`⚽ ${goalsRef.current}`, 130, 26);
 
+    // Level + progress bar (3 golde 1 lvl)
+    const lvl = levelRef.current;
+    const goalsInLvl = goalsRef.current % 3;
     ctx.fillStyle = "#5dd95d";
-    ctx.fillText(`LVL ${levelRef.current}`, 220, 23);
+    ctx.fillText(`LVL ${lvl}`, 195, 26);
+    // Mini progress bar
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillRect(265, 18, 60, 8);
+    ctx.fillStyle = "#5dd95d";
+    ctx.fillRect(265, 18, 60 * (goalsInLvl / 3), 8);
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(265, 18, 60, 8);
 
+    // Combo flame
     if (comboRef.current >= 2) {
-      ctx.fillStyle = "#ffaa00";
-      ctx.fillText(`x${comboRef.current}`, 290, 23);
+      const cmb = comboRef.current;
+      let flame = "🔥";
+      if (cmb >= 8) flame = "🔥🔥🔥";
+      else if (cmb >= 5) flame = "🔥🔥";
+      ctx.fillStyle = "#ff8800";
+      ctx.font = "bold 14px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(`${flame} x${cmb}`, 345, 26);
     }
 
     // Iska göstergeleri (sağ)
     ctx.textAlign = "right";
-    ctx.fillStyle = "#fff";
-    ctx.fillText("ıska:", CANVAS_W - 80, 23);
+    ctx.fillStyle = "#aaa";
+    ctx.font = "bold 10px monospace";
+    ctx.fillText("ıska", CANVAS_W - 78, 18);
     for (let i = 0; i < 3; i++) {
       const cx = CANVAS_W - 60 + i * 18;
-      const cy = 18;
+      const cy = 28;
       ctx.beginPath();
-      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-      ctx.fillStyle = i < missesRef.current ? "#ff3333" : "rgba(255,255,255,0.2)";
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      if (i < missesRef.current) {
+        // X mark
+        ctx.fillStyle = "#ff3333";
+        ctx.fillRect(cx - 7, cy - 7, 14, 14);
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, cy - 4);
+        ctx.lineTo(cx + 4, cy + 4);
+        ctx.moveTo(cx + 4, cy - 4);
+        ctx.lineTo(cx - 4, cy + 4);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillRect(cx - 7, cy - 7, 14, 14);
+        ctx.strokeStyle = "#666";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx - 7, cy - 7, 14, 14);
+      }
     }
   }
 
@@ -1195,31 +1573,52 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       // Power bar (sağ tarafta dikey)
       const bx = CANVAS_W - 60;
       const by = 100;
-      const bw = 24;
-      const bh = 320;
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      const bw = 28;
+      const bh = 360;
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
       ctx.fillRect(bx, by, bw, bh);
       ctx.strokeStyle = "#fff";
       ctx.lineWidth = 2;
       ctx.strokeRect(bx, by, bw, bh);
+
+      // Sweet spot zone (yeşil pulse)
+      const pb = powerBarRef.current;
+      const sweetMin = pb.sweetCenter - pb.sweetWidth / 2;
+      const sweetMax = pb.sweetCenter + pb.sweetWidth / 2;
+      const szY1 = by + bh - sweetMax * (bh - 4) - 2;
+      const szY2 = by + bh - sweetMin * (bh - 4) - 2;
+      const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
+      ctx.fillStyle = `rgba(93, 217, 93, ${0.35 + pulse * 0.35})`;
+      ctx.fillRect(bx + 1, szY1, bw - 2, szY2 - szY1);
+      ctx.strokeStyle = "#5dd95d";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx + 1, szY1, bw - 2, szY2 - szY1);
+
       // Dolgu (kademeli renk)
-      const v = powerBarRef.current.value;
+      const v = pb.value;
       const fillH = v * (bh - 4);
       const fy = by + bh - 2 - fillH;
       const grad = ctx.createLinearGradient(0, by + bh, 0, by);
-      grad.addColorStop(0, "#5dd95d");
+      grad.addColorStop(0, "#3a8a3a");
       grad.addColorStop(0.6, "#daa520");
       grad.addColorStop(1, "#ff3333");
       ctx.fillStyle = grad;
+      ctx.globalAlpha = 0.75;
       ctx.fillRect(bx + 2, fy, bw - 4, fillH);
-      // Yazı
+      ctx.globalAlpha = 1;
+
+      // İndikatör çizgisi (mevcut değer)
       ctx.fillStyle = "#fff";
+      ctx.fillRect(bx - 4, fy - 1, bw + 8, 2);
+
+      // Yazı
       ctx.font = "bold 11px monospace";
       ctx.textAlign = "center";
+      ctx.fillStyle = "#fff";
       ctx.fillText("GÜÇ", bx + bw / 2, by - 6);
       ctx.fillText(`${Math.round(v * 100)}`, bx + bw / 2, by + bh + 14);
 
-      drawPrompt(ctx, "2/3 — güç: tıkla");
+      drawPrompt(ctx, "2/3 — yeşil bölgede tıkla!");
     }
 
     if (phase === "curve") {
@@ -1233,34 +1632,52 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       ctx.stroke();
 
       // Curve bar (alt yatay)
-      const bx = CANVAS_W / 2 - 160;
-      const by = CANVAS_H - 90;
-      const bw = 320;
-      const bh = 22;
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      const bx = CANVAS_W / 2 - 180;
+      const by = CANVAS_H - 95;
+      const bw = 360;
+      const bh = 26;
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
       ctx.fillRect(bx, by, bw, bh);
       ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
       ctx.strokeRect(bx, by, bw, bh);
+
+      // Sweet spot zone (mavi pulse)
+      const cb = curveBarRef.current;
+      const sweetMin = cb.sweetCenter - cb.sweetWidth / 2;
+      const sweetMax = cb.sweetCenter + cb.sweetWidth / 2;
+      const szX1 = bx + bw / 2 + (sweetMin * bw) / 2;
+      const szX2 = bx + bw / 2 + (sweetMax * bw) / 2;
+      const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
+      ctx.fillStyle = `rgba(91, 158, 255, ${0.35 + pulse * 0.35})`;
+      ctx.fillRect(szX1, by + 1, szX2 - szX1, bh - 2);
+      ctx.strokeStyle = "#5b9eff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(szX1, by + 1, szX2 - szX1, bh - 2);
+
       // Orta çizgi
       ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(bx + bw / 2, by);
       ctx.lineTo(bx + bw / 2, by + bh);
       ctx.stroke();
+
       // İndikatör
-      const v = curveBarRef.current.value;
+      const v = cb.value;
       const ix = bx + bw / 2 + (v * bw) / 2;
-      ctx.fillStyle = "#5b9eff";
-      ctx.fillRect(ix - 4, by - 3, 8, bh + 6);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(ix - 3, by - 4, 6, bh + 8);
+
       // Etiketler
       ctx.fillStyle = "#fff";
       ctx.font = "bold 11px monospace";
       ctx.textAlign = "left";
-      ctx.fillText("← falso", bx, by - 4);
+      ctx.fillText("← falso", bx, by - 6);
       ctx.textAlign = "right";
-      ctx.fillText("falso →", bx + bw, by - 4);
+      ctx.fillText("falso →", bx + bw, by - 6);
 
-      drawPrompt(ctx, "3/3 — falso: tıkla");
+      drawPrompt(ctx, "3/3 — mavi bölgede tıkla!");
     }
   }
 
@@ -1280,9 +1697,17 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     for (const f of floatsRef.current) {
       ctx.globalAlpha = Math.min(1, f.life);
       ctx.fillStyle = f.color;
-      ctx.strokeStyle = "rgba(0,0,0,0.7)";
-      ctx.lineWidth = 3;
-      ctx.font = "bold 24px monospace";
+      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.lineWidth = 4;
+      // Büyük metinler için scale'i uzunlukla artır
+      const isMega = f.text.includes("GOLAZO") || f.text.includes("DÜNYA") || f.text.includes("LEVEL");
+      const isBig = f.text.includes("GOL") || f.text.includes("SÜPER") || f.text.includes("PERFECT");
+      let size = 22;
+      if (isMega) size = 38;
+      else if (isBig) size = 28;
+      // Pop-in animasyonu (life > 1.5'te hızlı büyür)
+      const popScale = f.life > 1.5 ? 1 + (f.life - 1.5) * 0.4 : 1;
+      ctx.font = `bold ${Math.floor(size * popScale)}px monospace`;
       ctx.textAlign = "center";
       ctx.strokeText(f.text, f.x, f.y);
       ctx.fillText(f.text, f.x, f.y);
@@ -1305,34 +1730,63 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
   // ===== Game over overlay =====
   function drawGameOverOverlay(ctx: CanvasRenderingContext2D) {
     if (phaseRef.current !== "game-over") return;
-    ctx.fillStyle = "rgba(0,0,0,0.85)";
+    ctx.fillStyle = "rgba(0,0,0,0.88)";
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Mega text
+    ctx.fillStyle = "#ff5555";
+    ctx.font = "bold 44px monospace";
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 5;
+    ctx.strokeText("OYUN BİTTİ", CANVAS_W / 2, 180);
+    ctx.fillText("OYUN BİTTİ", CANVAS_W / 2, 180);
+
+    // Skor box
+    ctx.fillStyle = "rgba(218, 165, 32, 0.15)";
+    ctx.fillRect(CANVAS_W / 2 - 150, 220, 300, 130);
+    ctx.strokeStyle = "#daa520";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(CANVAS_W / 2 - 150, 220, 300, 130);
+
+    ctx.fillStyle = "#daa520";
+    ctx.font = "bold 14px monospace";
+    ctx.fillText("FİNAL SKOR", CANVAS_W / 2, 245);
+
     ctx.fillStyle = "#fff";
     ctx.font = "bold 36px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("OYUN BİTTİ", CANVAS_W / 2, 200);
-    ctx.font = "bold 22px monospace";
-    ctx.fillStyle = "#daa520";
-    ctx.fillText(`SKOR: ${scoreRef.current}`, CANVAS_W / 2, 250);
+    ctx.fillText(scoreRef.current.toString(), CANVAS_W / 2, 285);
+
     ctx.fillStyle = "#aaa";
-    ctx.font = "14px monospace";
-    ctx.fillText(`gol: ${goalsRef.current}  ·  level: ${levelRef.current}`, CANVAS_W / 2, 280);
+    ctx.font = "12px monospace";
+    ctx.fillText(`${goalsRef.current} gol · level ${levelRef.current}`, CANVAS_W / 2, 310);
+
+    if (comboRef.current > 0 || goalsRef.current >= 5) {
+      ctx.fillStyle = "#ff8800";
+      ctx.fillText(`max combo: x${comboRef.current}`, CANVAS_W / 2, 330);
+    }
+
     ctx.fillStyle = "#5dd95d";
     ctx.font = "bold 16px monospace";
-    ctx.fillText("yeniden oynamak için tıkla", CANVAS_W / 2, 360);
+    ctx.fillText("→ yeniden oynamak için tıkla", CANVAS_W / 2, 410);
   }
 
   // ===== Ready prompt =====
   function drawReadyPrompt(ctx: CanvasRenderingContext2D) {
     if (phaseRef.current !== "ready") return;
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(CANVAS_W / 2 - 180, CANVAS_H - 80, 360, 40);
-    ctx.strokeStyle = "#fff";
-    ctx.strokeRect(CANVAS_W / 2 - 180, CANVAS_H - 80, 360, 40);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 14px monospace";
+    const s = scenarioRef.current;
+    ctx.fillStyle = "rgba(0,0,0,0.75)";
+    ctx.fillRect(CANVAS_W / 2 - 200, CANVAS_H - 90, 400, 50);
+    ctx.strokeStyle = "#daa520";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(CANVAS_W / 2 - 200, CANVAS_H - 90, 400, 50);
+    ctx.fillStyle = "#daa520";
+    ctx.font = "bold 12px monospace";
     ctx.textAlign = "center";
-    ctx.fillText("vurmak için tıkla — 3 aşama: nişan / güç / falso", CANVAS_W / 2, CANVAS_H - 55);
+    ctx.fillText(`◆ ${s.name.toUpperCase()}${s.bonus > 0 ? `   bonus +${s.bonus}` : ""}`, CANVAS_W / 2, CANVAS_H - 70);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 13px monospace";
+    ctx.fillText("vurmak için tıkla → nişan / güç / falso", CANVAS_W / 2, CANVAS_H - 52);
   }
 
   // ============================================================

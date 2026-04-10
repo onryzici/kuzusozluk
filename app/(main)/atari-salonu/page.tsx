@@ -79,6 +79,12 @@ const oyunlar = [
     description: "donen kuleden top dusur. kirmizidan kac, mavi halkalari geç.",
     emoji: "🌀",
   },
+  {
+    slug: "tml-ruzgar-gulu",
+    title: "tml ruzgar gulu",
+    description: "ruzgar gulunu tut, cevir, birak. ne kadar hizli o kadar puan. combo var.",
+    emoji: "💨",
+  },
 ];
 
 export default function AtariSalonuPage() {

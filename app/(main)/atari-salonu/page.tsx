@@ -50,28 +50,10 @@ const oyunlar = [
     emoji: "🐑",
   },
   {
-    slug: "reflex",
-    title: "reflex testi",
-    description: "5 turluk reaksiyon olcumu. ne kadar hizliysan o kadar puan.",
-    emoji: "⚡",
-  },
-  {
     slug: "hatirla",
     title: "hatirla",
     description: "beliren kareleri ezberle, kaybolduginda ayni yere tikla. memory matrix.",
     emoji: "🧠",
-  },
-  {
-    slug: "nisanci",
-    title: "kuzu nisanci",
-    description: "60 saniye kuzulara tikla, bombalardan kac. hedefler kuculur ve hareket eder.",
-    emoji: "🎯",
-  },
-  {
-    slug: "kule",
-    title: "kule ustasi",
-    description: "blok yigma. tam hizada bindirirsen perfect chain. dusarda kalan kesilir.",
-    emoji: "🧱",
   },
   {
     slug: "kelimelik",

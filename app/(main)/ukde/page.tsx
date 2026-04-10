@@ -45,6 +45,7 @@ export default async function UkdePage({ searchParams }: Props) {
   return (
     <div className="w-full px-4 lg:px-8 py-6">
       <UkdeListesi
+        key={page}
         initialData={data}
         isLoggedIn={!!session?.user}
         currentUserId={(session?.user as any)?.id || null}

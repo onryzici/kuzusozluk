@@ -52,7 +52,6 @@ model User {
   auditLogs      AuditLog[]
   gameScores     GameScore[]
   pushSubscriptions PushSubscription[]
-  rpgSave        RpgSave?
 
   @@index([username])
   @@index([karma])
@@ -403,23 +402,6 @@ model PushSubscription {
 
   @@unique([userId, endpoint])
   @@index([userId])
-}
-
-model RpgSave {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  charName     String   @db.VarChar(30)
-  level        Int      @default(1)
-  bossesKilled Int      @default(0)
-  totalKills   Int      @default(0)
-  data         Json
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([level])
-  @@index([bossesKilled])
 }
 
 model AuditLog {

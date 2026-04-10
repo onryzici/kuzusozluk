@@ -43,12 +43,6 @@ const oyunlar = [
     description: "yemekleri topla, buyumeye devam et. duvara carpma!",
     emoji: "🐛",
   },
-  {
-    slug: "spot-macerasi",
-    title: "spot macerası",
-    description: "rpg. 5 dungeon 5 boss. tml korç yss sog mpiç. save'in otomatik kaydolur.",
-    emoji: "⚔️",
-  },
 ];
 
 export default function AtariSalonuPage() {

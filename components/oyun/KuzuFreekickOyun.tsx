@@ -13,9 +13,20 @@ const BALL_START_Y = 1000;
 const WALL_Y = 600; // duvarın yeri
 const GOAL_Y = 0;
 
-// Goal boyutu (dünya birimi)
-const GOAL_WIDTH = 280;
-const GOAL_HEIGHT = 110;
+// Goal boyutu (dünya birimi) — ilk leveller daha büyük, lvl 8+ sabit
+const GOAL_WIDTH_MAX = 400;
+const GOAL_HEIGHT_MAX = 160;
+const GOAL_WIDTH_MIN = 280;
+const GOAL_HEIGHT_MIN = 110;
+
+function getGoalSize(level: number) {
+  // lvl 1 → max, lvl 8+ → min, arada lineer küçülür
+  const t = Math.min(1, Math.max(0, (level - 1) / 7));
+  return {
+    width: GOAL_WIDTH_MAX - (GOAL_WIDTH_MAX - GOAL_WIDTH_MIN) * t,
+    height: GOAL_HEIGHT_MAX - (GOAL_HEIGHT_MAX - GOAL_HEIGHT_MIN) * t,
+  };
+}
 
 // Fizik
 const GRAVITY = 900; // z ekseninde aşağı
@@ -100,12 +111,15 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
   const keeperRef = useRef({
     x: 0,
     targetX: 0,
-    targetZ: GOAL_HEIGHT / 2,
+    targetZ: GOAL_HEIGHT_MAX / 2,
     diveX: 0,
     diveZ: 0,
     diveTimer: 0,
     diving: false,
-    speed: 1.0,
+    reachSpeed: 1.0,
+    saveRadius: 36,
+    tracks: false,
+    commitTimer: 0, // izleme süresinin sonunda hedefe kilitlenir
   });
 
   // Kuzu animasyonu
@@ -124,7 +138,13 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
   // ============================================================
   const resetForNextShot = useCallback(() => {
     phaseRef.current = "ready";
-    reticleRef.current = { x: 0, y: 60, vx: 130 + Math.random() * 60, vy: 70 + Math.random() * 40 };
+    const gs = getGoalSize(levelRef.current);
+    reticleRef.current = {
+      x: 0,
+      y: gs.height * 0.5,
+      vx: 95 + Math.random() * 50,
+      vy: 55 + Math.random() * 30,
+    };
     powerBarRef.current = { value: 0, dir: 1 };
     curveBarRef.current = { value: 0, dir: 1 };
     ballRef.current = {
@@ -141,12 +161,15 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       landed: false,
       trail: [],
     };
-    keeperRef.current.x = (Math.random() - 0.5) * 60;
-    keeperRef.current.targetX = 0;
-    keeperRef.current.diveX = 0;
-    keeperRef.current.diveZ = 0;
-    keeperRef.current.diving = false;
-    keeperRef.current.diveTimer = 0;
+    const k = keeperRef.current;
+    k.x = (Math.random() - 0.5) * 60;
+    k.targetX = 0;
+    k.targetZ = gs.height * 0.4;
+    k.diveX = k.x;
+    k.diveZ = 0;
+    k.diving = false;
+    k.diveTimer = 0;
+    k.commitTimer = 0;
     kuzuRef.current.kickPhase = 0;
   }, []);
 
@@ -235,20 +258,64 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
     b.landed = false;
     b.trail = [];
 
-    // Kaleci tahmini: %75 doğru tahmin, %25 ters yöne
+    // ================================================================
+    // KALECİ AI: yetenek skoru, reaksiyon, tahmin hatası, falso algılama,
+    //            uçuş esnasında hedefe yaklaşma (tracking).
+    // ================================================================
     const k = keeperRef.current;
-    const goodGuess = Math.random() < 0.5 + Math.min(0.35, levelRef.current * 0.025);
-    if (goodGuess) {
-      // Hedefe yakın tahmin (curve hesabı dahil değil → falso onu kandırır)
-      k.targetX = aim.x + (Math.random() - 0.5) * 30;
-      k.targetZ = aim.z + (Math.random() - 0.5) * 20;
-    } else {
-      // Yanlış yöne uzanır
-      k.targetX = -aim.x * 0.7 + (Math.random() - 0.5) * 80;
-      k.targetZ = GOAL_HEIGHT * 0.4 + (Math.random() - 0.5) * 30;
+    const lvl = levelRef.current;
+    const skill = Math.min(1, Math.max(0, (lvl - 1) / 9)); // 0..1 (lvl 10+ tam)
+    const gs = getGoalSize(lvl);
+
+    // Reaksiyon süresi: yüksek lvl daha hızlı, güçlü şut biraz geç algılanır
+    const baseReact = 0.34 - skill * 0.20; // 0.34 → 0.14
+    const powerLag = power * 0.07;
+    k.diveTimer = baseReact + powerLag;
+
+    // Uzanma hızı: yüksek lvl daha hızlı sıçrar
+    k.reachSpeed = 0.85 + skill * 0.75; // 0.85 → 1.60
+
+    // Save reach radius: yüksek lvl daha geniş alan kapatır
+    k.saveRadius = 30 + skill * 14; // 30 → 44
+
+    // Tahmin hatası: düşük lvl çok yanlış sıçrar
+    const errorMag = (1 - skill) * 100 + 14;
+    let predX = aim.x + (Math.random() - 0.5) * errorMag;
+    let predZ = aim.z + (Math.random() - 0.5) * errorMag * 0.45;
+
+    // Üst köşe penaltisi: kale tavanına uzanmak zor
+    const topRatio = aim.z / gs.height;
+    if (topRatio > 0.65) k.reachSpeed *= 0.78;
+    if (topRatio > 0.85) k.reachSpeed *= 0.88;
+
+    // Köşe tahmini: çok yan şutlarda yüksek lvl kaleci doğru yöne meyleder
+    if (skill > 0.3) {
+      const sideHint = Math.sign(aim.x) * gs.width * 0.18 * skill;
+      predX = predX * 0.7 + sideHint * 0.3;
     }
+
+    // Falso algılama: lvl 4+ kısmen falso yönünü hesaplar
+    const detectsCurve = skill > 0.3 && Math.random() < skill * 0.85;
+    if (detectsCurve) {
+      // Falso topu yan tarafa götürür → uzanmayı buna göre ayarla
+      const curveDrift = curve * 90 * skill;
+      predX += curveDrift;
+    }
+
+    // Sınır: kaleci kale dışına uzanmaz
+    const maxReachX = gs.width / 2 + 25;
+    predX = Math.max(-maxReachX, Math.min(maxReachX, predX));
+    predZ = Math.max(0, Math.min(gs.height + 10, predZ));
+
+    k.targetX = predX;
+    k.targetZ = predZ;
+    k.diveX = k.x;
+    k.diveZ = 0;
     k.diving = false;
-    k.diveTimer = 0.15; // küçük gecikme
+    // Tracking: lvl 4+ uçuş esnasında topa kısmen reaksiyon verir
+    k.tracks = skill > 0.3;
+    // Commit timer: tracking'den sonra kaleci son yarıda hedefe kilitlenir
+    k.commitTimer = 0.55;
 
     // Kuzu vuruş animasyonu
     kuzuRef.current.kickPhase = 1;
@@ -267,10 +334,11 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
 
     if (type === "goal") {
       bonus = 100;
+      const gs = getGoalSize(levelRef.current);
       // Üst köşe bonusu
-      if (aim.z > GOAL_HEIGHT * 0.6) bonus += 30;
-      if (Math.abs(aim.x) > GOAL_WIDTH * 0.32) bonus += 40;
-      if (Math.abs(aim.x) > GOAL_WIDTH * 0.32 && aim.z > GOAL_HEIGHT * 0.6) bonus += 50; // üst köşe
+      if (aim.z > gs.height * 0.6) bonus += 30;
+      if (Math.abs(aim.x) > gs.width * 0.32) bonus += 40;
+      if (Math.abs(aim.x) > gs.width * 0.32 && aim.z > gs.height * 0.6) bonus += 50; // üst köşe
       // Güç bonusu
       bonus += Math.floor(power * 30);
       // Falso bonusu
@@ -385,11 +453,12 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       // Reticle hareketi (aim fazı)
       if (phase === "aim") {
         const r = reticleRef.current;
+        const gs = getGoalSize(levelRef.current);
         const speedMult = 1 + (levelRef.current - 1) * 0.15;
         r.x += r.vx * dt * speedMult;
         r.y += r.vy * dt * speedMult;
-        const maxX = GOAL_WIDTH / 2 - 15;
-        const maxY = GOAL_HEIGHT - 15;
+        const maxX = gs.width / 2 - 15;
+        const maxY = gs.height - 15;
         if (r.x > maxX) {
           r.x = maxX;
           r.vx = -Math.abs(r.vx);
@@ -411,7 +480,7 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       // Power bar (power fazı)
       if (phase === "power") {
         const p = powerBarRef.current;
-        const speed = 1.6 + (levelRef.current - 1) * 0.1;
+        const speed = 1.3 + (levelRef.current - 1) * 0.08;
         p.value += p.dir * speed * dt;
         if (p.value >= 1) {
           p.value = 1;
@@ -426,7 +495,7 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
       // Curve bar (curve fazı)
       if (phase === "curve") {
         const c = curveBarRef.current;
-        const speed = 1.8 + (levelRef.current - 1) * 0.12;
+        const speed = 1.5 + (levelRef.current - 1) * 0.10;
         c.value += c.dir * speed * dt;
         if (c.value >= 1) {
           c.value = 1;
@@ -475,11 +544,11 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
         // Duvar çarpışması
         if (!b.wallChecked && b.y <= WALL_Y) {
           b.wallChecked = true;
-          // Duvar boyutu level'a göre
-          const wallCount = Math.min(5, 1 + Math.floor(levelRef.current / 2));
+          // Duvar boyutu level'a göre — lvl 1-2 duvarsız, sonra kademeli
+          const wallCount = Math.min(5, Math.max(0, levelRef.current - 2));
           const wallWidth = wallCount * 36;
-          const wallHeight = 75 + levelRef.current * 3;
-          if (Math.abs(b.x) < wallWidth / 2 && b.z < wallHeight && b.z > 0) {
+          const wallHeight = Math.min(96, 70 + levelRef.current * 3);
+          if (wallCount > 0 && Math.abs(b.x) < wallWidth / 2 && b.z < wallHeight && b.z > 0) {
             // Çarptı
             b.vy = -b.vy * 0.3;
             b.vx += (Math.random() - 0.5) * 100;
@@ -495,24 +564,35 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
           k.diveTimer -= dt;
           if (k.diveTimer <= 0) k.diving = true;
         }
+        // Tracking: yüksek lvl kaleciler topu izleyerek hedefini günceller
+        if (k.tracks && k.commitTimer > 0) {
+          k.commitTimer -= dt;
+          // Top hedeften ne kadar farklıysa, hedefini gerçek topa doğru kaydır
+          // Ama aim'i tamamen unutmaz — karışım yapar
+          const trackRate = 1.6 * dt;
+          k.targetX += (b.x - k.targetX) * trackRate;
+          k.targetZ += (b.z - k.targetZ) * trackRate;
+        }
         if (k.diving) {
-          const speedMul = 1 + (levelRef.current - 1) * 0.08;
           const dx = k.targetX - k.diveX;
           const dz = k.targetZ - k.diveZ;
-          k.diveX += dx * dt * 4 * speedMul;
-          k.diveZ += dz * dt * 4 * speedMul;
+          // Hız reachSpeed ile ölçekli; uzaktan başlarken hızlı, yaklaşırken yavaşlar
+          const reachRate = 4.2 * k.reachSpeed * dt;
+          k.diveX += dx * reachRate;
+          k.diveZ += dz * reachRate;
         }
 
         // Goal line geçti mi?
         if (b.y <= GOAL_Y) {
+          const gs = getGoalSize(levelRef.current);
           // İçeride mi?
-          const inGoalX = Math.abs(b.x) < GOAL_WIDTH / 2;
-          const inGoalZ = b.z > 0 && b.z < GOAL_HEIGHT;
+          const inGoalX = Math.abs(b.x) < gs.width / 2;
+          const inGoalZ = b.z > 0 && b.z < gs.height;
 
           if (inGoalX && inGoalZ) {
             // Direk kontrolü (kenar)
-            const distFromPostX = GOAL_WIDTH / 2 - Math.abs(b.x);
-            const distFromCrossbar = GOAL_HEIGHT - b.z;
+            const distFromPostX = gs.width / 2 - Math.abs(b.x);
+            const distFromCrossbar = gs.height - b.z;
             if (distFromPostX < 6 || distFromCrossbar < 6) {
               handleResult("post");
               return;
@@ -521,7 +601,7 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
             const dx = b.x - k.diveX;
             const dz = b.z - k.diveZ;
             const dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist < 38) {
+            if (dist < k.saveRadius) {
               handleResult("save");
               return;
             }
@@ -670,9 +750,10 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
 
   // ===== Kale =====
   function drawGoal(ctx: CanvasRenderingContext2D) {
-    const halfW = GOAL_WIDTH / 2;
-    const tl = project(-halfW, GOAL_Y, GOAL_HEIGHT);
-    const tr = project(halfW, GOAL_Y, GOAL_HEIGHT);
+    const gs = getGoalSize(levelRef.current);
+    const halfW = gs.width / 2;
+    const tl = project(-halfW, GOAL_Y, gs.height);
+    const tr = project(halfW, GOAL_Y, gs.height);
     const bl = project(-halfW, GOAL_Y, 0);
     const br = project(halfW, GOAL_Y, 0);
 
@@ -731,8 +812,9 @@ export default function KuzuFreekickOyun({ onGameOver }: Props) {
 
   // ===== Duvar (defansörler) =====
   function drawWall(ctx: CanvasRenderingContext2D) {
-    const wallCount = Math.min(5, 1 + Math.floor(levelRef.current / 2));
-    const wallHeight = 75 + levelRef.current * 3;
+    const wallCount = Math.min(5, Math.max(0, levelRef.current - 2));
+    if (wallCount === 0) return;
+    const wallHeight = Math.min(96, 70 + levelRef.current * 3);
     const totalW = wallCount * 36;
     for (let i = 0; i < wallCount; i++) {
       const wx = -totalW / 2 + 18 + i * 36;

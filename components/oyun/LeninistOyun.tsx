@@ -469,16 +469,14 @@ export default function LeninistOyun({ onGameOver }: Props) {
     ctx.translate(WHEEL_X, WHEEL_Y);
     ctx.rotate(wheelRotRef.current);
 
-    // Vücut: spread-eagle stick figure pozu
-    // Oran: wheel'a göre normalize, "yukarı" -y yönü
-
+    // ===== Vücut: spread-eagle stick figure pozu =====
     // Boyun + omurga
     ctx.strokeStyle = "#1a1a1a";
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(0, -90); // boyun
-    ctx.lineTo(0, 30); // pelvis
+    ctx.moveTo(0, -90);
+    ctx.lineTo(0, 30);
     ctx.stroke();
 
     // Sol kol
@@ -509,38 +507,60 @@ export default function LeninistOyun({ onGameOver }: Props) {
     ctx.lineTo(95, 165);
     ctx.stroke();
 
-    // Tunic / önlük (komünist tarzı kahve-gri ceket)
-    ctx.fillStyle = "#5a4a3a";
+    // ===== Kazak / kıyafet (mor hardigan) =====
+    ctx.fillStyle = "#6a4a8a";
     ctx.beginPath();
-    ctx.moveTo(-25, -75);
-    ctx.lineTo(25, -75);
-    ctx.lineTo(35, 35);
-    ctx.lineTo(-35, 35);
+    ctx.moveTo(-30, -78);
+    ctx.lineTo(30, -78);
+    ctx.lineTo(40, 38);
+    ctx.lineTo(-40, 38);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#1a1a1a";
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Yaka V kesimi (kırmızı)
-    ctx.fillStyle = "#aa2222";
+    // Hardigan ön açıklık çizgisi
+    ctx.strokeStyle = "#3a2050";
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(-12, -75);
-    ctx.lineTo(12, -75);
-    ctx.lineTo(0, -55);
+    ctx.moveTo(0, -78);
+    ctx.lineTo(0, 38);
+    ctx.stroke();
+
+    // Yaka (V şeklinde, beyaz tişört arkadan)
+    ctx.fillStyle = "#e8e8e8";
+    ctx.beginPath();
+    ctx.moveTo(-10, -78);
+    ctx.lineTo(10, -78);
+    ctx.lineTo(0, -62);
     ctx.closePath();
     ctx.fill();
 
-    // Düğmeler
-    ctx.fillStyle = "#daa520";
+    // Düğmeler (mor üstüne küçük)
+    ctx.fillStyle = "#3a2050";
     for (let i = 0; i < 3; i++) {
       ctx.beginPath();
-      ctx.arc(0, -50 + i * 25, 2.5, 0, Math.PI * 2);
+      ctx.arc(-6, -50 + i * 28, 1.8, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Eller (siyah küçük daireler)
-    ctx.fillStyle = "#e8b894";
+    // Pantolon (kot mavi) — vücudun alt yarısı
+    ctx.strokeStyle = "#3a5a8a";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(0, 38);
+    ctx.lineTo(-65, 110);
+    ctx.lineTo(-95, 165);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 38);
+    ctx.lineTo(65, 110);
+    ctx.lineTo(95, 165);
+    ctx.stroke();
+
+    // Eller (ten rengi)
+    ctx.fillStyle = "#f0c8a8";
     ctx.beginPath();
     ctx.arc(-150, -65, 8, 0, Math.PI * 2);
     ctx.arc(150, -65, 8, 0, Math.PI * 2);
@@ -549,17 +569,26 @@ export default function LeninistOyun({ onGameOver }: Props) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Botlar
+    // Ayakkabı (siyah converse benzeri)
     ctx.fillStyle = "#1a1a1a";
     ctx.beginPath();
-    ctx.ellipse(-95, 168, 18, 8, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(-95, 168, 16, 7, -0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(95, 168, 18, 8, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(95, 168, 16, 7, 0.3, 0, Math.PI * 2);
     ctx.fill();
+    // Tabanlık (beyaz şerit)
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(-95, 172, 14, 0, Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(95, 172, 14, 0, Math.PI);
+    ctx.stroke();
 
-    // Kafa
-    ctx.fillStyle = "#e8b894";
+    // ===== Kafa =====
+    ctx.fillStyle = "#f0c8a8";
     ctx.beginPath();
     ctx.arc(0, -110, 26, 0, Math.PI * 2);
     ctx.fill();
@@ -567,63 +596,110 @@ export default function LeninistOyun({ onGameOver }: Props) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Kel kafa parlaklık
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    // ===== Saç (kahverengi, uzun, omuzlara kadar) =====
+    ctx.fillStyle = "#5a3018";
+    // Üst kısım — kafanın üstünü kaplayan saç
     ctx.beginPath();
-    ctx.arc(-6, -118, 8, 0, Math.PI * 2);
+    ctx.arc(0, -114, 28, Math.PI, 0);
     ctx.fill();
 
-    // Sakal (lenin tarzı sivri)
-    ctx.fillStyle = "#3a1808";
+    // Sol uzun saç (omuza kadar düşer)
     ctx.beginPath();
-    ctx.moveTo(-12, -100);
-    ctx.lineTo(12, -100);
-    ctx.lineTo(8, -85);
-    ctx.lineTo(0, -75);
-    ctx.lineTo(-8, -85);
+    ctx.moveTo(-26, -110);
+    ctx.quadraticCurveTo(-38, -90, -36, -65);
+    ctx.quadraticCurveTo(-32, -50, -22, -55);
+    ctx.quadraticCurveTo(-22, -85, -22, -110);
     ctx.closePath();
     ctx.fill();
 
-    // Bıyık
-    ctx.fillStyle = "#3a1808";
+    // Sağ uzun saç (omuza kadar düşer)
     ctx.beginPath();
-    ctx.ellipse(-6, -98, 6, 2, -0.3, 0, Math.PI * 2);
-    ctx.ellipse(6, -98, 6, 2, 0.3, 0, Math.PI * 2);
+    ctx.moveTo(26, -110);
+    ctx.quadraticCurveTo(38, -90, 36, -65);
+    ctx.quadraticCurveTo(32, -50, 22, -55);
+    ctx.quadraticCurveTo(22, -85, 22, -110);
+    ctx.closePath();
     ctx.fill();
 
-    // Kasket (Lenin cap, kızıl yıldızlı)
-    ctx.fillStyle = "#1a1a1a";
-    // Cap base
+    // Kakül (alından sarkık)
     ctx.beginPath();
-    ctx.ellipse(0, -132, 28, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Cap top
-    ctx.beginPath();
-    ctx.ellipse(0, -140, 22, 12, 0, Math.PI, Math.PI * 2);
-    ctx.fill();
-    // Visor
-    ctx.beginPath();
-    ctx.ellipse(0, -126, 18, 4, 0, 0, Math.PI);
+    ctx.moveTo(-22, -125);
+    ctx.quadraticCurveTo(-12, -115, -2, -118);
+    ctx.quadraticCurveTo(8, -120, 18, -130);
+    ctx.quadraticCurveTo(0, -135, -22, -130);
+    ctx.closePath();
     ctx.fill();
 
-    // Kızıl yıldız
-    ctx.fillStyle = "#ff2222";
-    ctx.shadowColor = "#ff2222";
-    ctx.shadowBlur = 8;
-    drawStar(ctx, 0, -142, 5, 7, 3);
-    ctx.shadowBlur = 0;
+    // Saç highlight
+    ctx.fillStyle = "rgba(255, 200, 150, 0.2)";
+    ctx.beginPath();
+    ctx.arc(-12, -130, 6, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Gözler (X işareti — knock-out look gibi cartoony)
+    // ===== Gözlük =====
+    // Çerçeveler — siyah, yuvarlak
     ctx.strokeStyle = "#1a1a1a";
+    ctx.lineWidth = 2.5;
+    // Sol cam
+    ctx.beginPath();
+    ctx.arc(-9, -112, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    // Sağ cam
+    ctx.beginPath();
+    ctx.arc(9, -112, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    // Burun köprüsü
+    ctx.beginPath();
+    ctx.moveTo(-2, -112);
+    ctx.lineTo(2, -112);
+    ctx.stroke();
+    // Saplar (kulaklara doğru)
+    ctx.beginPath();
+    ctx.moveTo(-16, -112);
+    ctx.lineTo(-22, -110);
+    ctx.moveTo(16, -112);
+    ctx.lineTo(22, -110);
+    ctx.stroke();
+
+    // Camın içinde göz parıltısı (yansıma)
+    ctx.fillStyle = "rgba(200, 220, 255, 0.4)";
+    ctx.beginPath();
+    ctx.arc(-11, -114, 2.5, 0, Math.PI * 2);
+    ctx.arc(7, -114, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Gözler (gözlük camlarının içinde, küçük noktalar)
+    ctx.fillStyle = "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(-8, -111, 1.8, 0, Math.PI * 2);
+    ctx.arc(10, -111, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Burun (küçük çizgi)
+    ctx.strokeStyle = "#c08868";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -106);
+    ctx.lineTo(-2, -100);
+    ctx.lineTo(0, -98);
+    ctx.stroke();
+
+    // Ağız (küçük neutral çizgi)
+    ctx.strokeStyle = "#a04060";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(-9, -112, 2.5, 0, Math.PI * 2);
-    ctx.arc(9, -112, 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#1a1a1a";
+    ctx.moveTo(-4, -92);
+    ctx.lineTo(4, -92);
+    ctx.stroke();
+
+    // Yanak allığı (hafif pembe)
+    ctx.fillStyle = "rgba(255, 150, 150, 0.3)";
+    ctx.beginPath();
+    ctx.arc(-15, -105, 4, 0, Math.PI * 2);
+    ctx.arc(15, -105, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hedef bölge etiketleri (puanlar) — sadece label
-    // Her TARGET_ZONE için "+30" gibi yazı
+    // Hedef bölge etiketleri (puanlar)
     ctx.font = "bold 10px monospace";
     ctx.textAlign = "center";
     for (const z of TARGET_ZONES) {
@@ -637,20 +713,6 @@ export default function LeninistOyun({ onGameOver }: Props) {
     }
 
     ctx.restore();
-  }
-
-  function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, points: number, outer: number, inner: number) {
-    ctx.beginPath();
-    for (let i = 0; i < points * 2; i++) {
-      const r = i % 2 === 0 ? outer : inner;
-      const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + Math.cos(a) * r;
-      const y = cy + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
   }
 
   function drawStuckKnife(ctx: CanvasRenderingContext2D, k: StuckKnife) {

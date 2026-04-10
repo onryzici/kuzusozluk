@@ -50,34 +50,10 @@ const oyunlar = [
     emoji: "🐑",
   },
   {
-    slug: "hatirla",
-    title: "hatirla",
-    description: "beliren kareleri ezberle, kaybolduginda ayni yere tikla. memory matrix.",
-    emoji: "🧠",
-  },
-  {
-    slug: "kelimelik",
-    title: "kelimelik",
-    description: "5 harfli turkce kelimeyi 6 denemede bul. wordle turkce.",
-    emoji: "🔤",
-  },
-  {
-    slug: "plinko",
-    title: "plinko",
-    description: "10 top, civili tahta. uctaki slotlar x100 carpan. nereye dusecek?",
-    emoji: "⚪",
-  },
-  {
     slug: "kuzu-zipla",
     title: "kuzu zipla",
     description: "doodle jump. kuzu otomatik ziplar, yon tuslari. ne kadar yuksege?",
     emoji: "⬆️",
-  },
-  {
-    slug: "helix",
-    title: "helix jump",
-    description: "donen kuleden top dusur. kirmizidan kac, mavi halkalari geç.",
-    emoji: "🌀",
   },
   {
     slug: "tml-ruzgar-gulu",

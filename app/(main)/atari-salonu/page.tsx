@@ -67,6 +67,24 @@ const oyunlar = [
     description: "60 saniye kuzulara tikla, bombalardan kac. hedefler kuculur ve hareket eder.",
     emoji: "🎯",
   },
+  {
+    slug: "kule",
+    title: "kule ustasi",
+    description: "blok yigma. tam hizada bindirirsen perfect chain. dusarda kalan kesilir.",
+    emoji: "🧱",
+  },
+  {
+    slug: "kelimelik",
+    title: "kelimelik",
+    description: "5 harfli turkce kelimeyi 6 denemede bul. wordle turkce.",
+    emoji: "🔤",
+  },
+  {
+    slug: "plinko",
+    title: "plinko",
+    description: "10 top, civili tahta. uctaki slotlar x100 carpan. nereye dusecek?",
+    emoji: "⚪",
+  },
 ];
 
 export default function AtariSalonuPage() {

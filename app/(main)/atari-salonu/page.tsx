@@ -43,6 +43,12 @@ const oyunlar = [
     description: "yemekleri topla, buyumeye devam et. duvara carpma!",
     emoji: "🐛",
   },
+  {
+    slug: "kuzu-freekick",
+    title: "kuzu freekick",
+    description: "3 asamali serbest vurus: nisan, guc, falso. duvardan ve kaleciden gec.",
+    emoji: "🐑",
+  },
 ];
 
 export default function AtariSalonuPage() {

@@ -85,6 +85,12 @@ const oyunlar = [
     description: "ruzgar gulunu tut, cevir, birak. ne kadar hizli o kadar puan. combo var.",
     emoji: "💨",
   },
+  {
+    slug: "leninist-sapla",
+    title: "leninist'e sapla",
+    description: "donen tahtaya bicak firlat. hedef bolgelere isabet bonus, sapli bicaklara carpma.",
+    emoji: "🔪",
+  },
 ];
 
 export default function AtariSalonuPage() {

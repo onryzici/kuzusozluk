@@ -85,6 +85,18 @@ const oyunlar = [
     description: "10 top, civili tahta. uctaki slotlar x100 carpan. nereye dusecek?",
     emoji: "⚪",
   },
+  {
+    slug: "kuzu-zipla",
+    title: "kuzu zipla",
+    description: "doodle jump. kuzu otomatik ziplar, yon tuslari. ne kadar yuksege?",
+    emoji: "⬆️",
+  },
+  {
+    slug: "helix",
+    title: "helix jump",
+    description: "donen kuleden top dusur. kirmizidan kac, mavi halkalari geç.",
+    emoji: "🌀",
+  },
 ];
 
 export default function AtariSalonuPage() {

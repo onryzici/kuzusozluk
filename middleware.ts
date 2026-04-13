@@ -4,6 +4,28 @@ import { redis } from "@/lib/redis";
 
 const protectedPaths = ["/ayarlar", "/mesajlar", "/baslik/yeni", "/admin"];
 
+// Login gerektirmeyen sayfalar
+const publicPages = new Set([
+  "/giris",
+  "/kayit",
+  "/sifre-sifirla",
+  "/engellendi",
+  "/ip-engel",
+]);
+const publicPagePrefixes = ["/aktivasyon", "/sifre-yenile"];
+
+// Login gerektirmeyen API yolları
+const publicApiPrefixes = [
+  "/api/auth",
+];
+
+function isPublicPath(pathname: string): boolean {
+  if (publicPages.has(pathname)) return true;
+  if (publicPagePrefixes.some((p) => pathname.startsWith(p + "/") || pathname === p)) return true;
+  if (publicApiPrefixes.some((p) => pathname.startsWith(p))) return true;
+  return false;
+}
+
 async function isIpBannedEdge(ip: string | null): Promise<boolean> {
   if (!ip || !redis) return false;
   try {
@@ -66,6 +88,20 @@ export default auth(async (req) => {
     return NextResponse.redirect(url);
   }
 
+  // Global auth gate: giriş yapmayan hiç kimse içerik göremez
+  if (!req.auth && !isPublicPath(pathname)) {
+    if (pathname.startsWith("/api/")) {
+      return new NextResponse(
+        JSON.stringify({ success: false, error: { code: "UNAUTHORIZED", message: "giriş yapmalısınız" } }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = "/giris";
+    if (pathname !== "/") url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
+  }
+
   // Ban check: JWT'deki isBanned veya Redis'teki banned_since kontrolü
   if (req.auth) {
     const user = req.auth.user as { isBanned?: boolean; id?: string; iat?: number } | undefined;
@@ -104,21 +140,7 @@ export default auth(async (req) => {
 
 export const config = {
   matcher: [
-    "/ayarlar/:path*",
-    "/mesajlar/:path*",
-    "/baslik/yeni",
-    "/admin/:path*",
-    "/engellendi",
-    "/ip-engel",
-    "/",
-    "/baslik/:path*",
-    "/kullanici/:path*",
-    "/giris",
-    "/gundem",
-    "/bebe",
-    "/son",
-    "/takip",
-    "/ara",
-    "/api/:path*",
+    // Tüm yollar — statik varlıklar ve next internals hariç
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|images/|assets/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|otf|css|js|map|txt|xml|json)$).*)",
   ],
 };

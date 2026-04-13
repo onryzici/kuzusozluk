@@ -17,6 +17,7 @@ const publicPagePrefixes = ["/aktivasyon", "/sifre-yenile"];
 // Login gerektirmeyen API yolları
 const publicApiPrefixes = [
   "/api/auth",
+  "/api/gorsel", // avatar + entry görselleri (next/image internal fetch icin)
 ];
 
 function isPublicPath(pathname: string): boolean {

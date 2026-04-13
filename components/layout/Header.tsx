@@ -101,7 +101,7 @@ function UserMenu({ session }: { session: any }) {
             </Link>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={() => signOut()} className="text-xs text-destructive">
+        <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })} className="text-xs text-destructive">
           <LogOut className="h-3 w-3 mr-2" /> çıkış yap
         </DropdownMenuItem>
       </DropdownMenuContent>

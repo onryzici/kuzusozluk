@@ -17,6 +17,13 @@ type User = {
 
 const ROLES = ["CAYLAK", "USER", "AUTHOR", "CO_MOD", "MODERATOR", "ADMIN"] as const;
 
+type BanModalState = {
+  username: string;
+  banIp: boolean;
+  purgeContent: boolean;
+  banReason: string;
+};
+
 export default function KullanicilarPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +32,7 @@ export default function KullanicilarPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
+  const [banModal, setBanModal] = useState<BanModalState | null>(null);
 
   async function fetchUsers(p = 1, q = "") {
     setLoading(true);
@@ -47,45 +55,44 @@ export default function KullanicilarPage() {
     fetchUsers(page, search);
   }, [page, search]);
 
-  async function toggleBan(username: string, isBanned: boolean) {
-    const body: Record<string, unknown> = { isBanned: !isBanned };
-
-    if (!isBanned) {
-      // banlıyoruz — ek seçenekleri sor
-      const banIp = window.confirm(
-        `${username} kullanıcısının ip adresleri de banlansın mı?\n\n` +
-        "tamam = ip ban (bilinen tüm ip'leri engellenir)\n" +
-        "iptal = sadece hesap banı"
-      );
-      const purge = window.confirm(
-        `${username} kullanıcısının tüm içerikleri (entry, yorum, oy, mesaj) silinsin mi?\n\n` +
-        "tamam = evet sil\n" +
-        "iptal = içeriği bırak"
-      );
-      const reason = window.prompt("ban sebebi (opsiyonel):", "") || "";
-
-      body.banIp = banIp;
-      body.purgeContent = purge;
-      if (reason.trim()) body.banReason = reason.trim();
-
-      const summary = `${username} banlanacak.\n- ip ban: ${banIp ? "evet" : "hayır"}\n- içerik sil: ${purge ? "evet" : "hayır"}\n- sebep: ${reason || "-"}\n\nonaylıyor musun?`;
-      if (!window.confirm(summary)) return;
-    }
-
+  async function unban(username: string) {
     setUpdating(username);
     try {
       const res = await fetch(`/api/admin/kullanicilar/${username}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ isBanned: false }),
       });
       const json = await res.json();
       if (json.success) {
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.username === username ? { ...u, isBanned: !isBanned } : u
-          )
-        );
+        setUsers((prev) => prev.map((u) => (u.username === username ? { ...u, isBanned: false } : u)));
+      } else {
+        alert(json.error?.message || "hata");
+      }
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function submitBan() {
+    if (!banModal) return;
+    const { username, banIp, purgeContent, banReason } = banModal;
+    setUpdating(username);
+    try {
+      const res = await fetch(`/api/admin/kullanicilar/${username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isBanned: true,
+          banIp,
+          purgeContent,
+          banReason: banReason.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setUsers((prev) => prev.map((u) => (u.username === username ? { ...u, isBanned: true } : u)));
+        setBanModal(null);
       } else {
         alert(json.error?.message || "hata");
       }
@@ -194,7 +201,16 @@ export default function KullanicilarPage() {
                     <td className="py-2 pr-4">{user.karma}</td>
                     <td className="py-2">
                       <button
-                        onClick={() => toggleBan(user.username, user.isBanned)}
+                        onClick={() =>
+                          user.isBanned
+                            ? unban(user.username)
+                            : setBanModal({
+                                username: user.username,
+                                banIp: true,
+                                purgeContent: false,
+                                banReason: "",
+                              })
+                        }
                         disabled={updating === user.username}
                         className={`text-xs px-2 py-1 rounded disabled:opacity-50 ${
                           user.isBanned
@@ -241,6 +257,81 @@ export default function KullanicilarPage() {
             </button>
           </div>
         </>
+      )}
+
+      {banModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setBanModal(null)}>
+          <div
+            className="w-full max-w-md bg-background border rounded-lg p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h2 className="text-base font-semibold">{banModal.username} banlanacak</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                seçenekleri ayarla ve onayla.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={banModal.banIp}
+                onChange={(e) => setBanModal({ ...banModal, banIp: e.target.checked })}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="font-medium">ip ban</div>
+                <div className="text-xs text-muted-foreground">
+                  kullanıcının audit log&apos;daki bütün ip&apos;leri engellenir. modem resetlese bile bilinen ip&apos;ler girene kadar dönse kapalı.
+                </div>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={banModal.purgeContent}
+                onChange={(e) => setBanModal({ ...banModal, purgeContent: e.target.checked })}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="font-medium">tüm içerikleri sil</div>
+                <div className="text-xs text-muted-foreground">
+                  entry, yorum, oy, favori, mesaj, bildirim, anket, ukde. geri alınamaz.
+                </div>
+              </div>
+            </label>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium">sebep (opsiyonel)</label>
+              <input
+                type="text"
+                value={banModal.banReason}
+                onChange={(e) => setBanModal({ ...banModal, banReason: e.target.value })}
+                placeholder="küfür, spam, vs."
+                className="w-full border rounded-md px-2 py-1.5 text-sm bg-background"
+                maxLength={500}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setBanModal(null)}
+                disabled={updating === banModal.username}
+                className="text-xs px-3 py-1.5 border rounded hover:bg-accent disabled:opacity-50"
+              >
+                vazgeç
+              </button>
+              <button
+                onClick={submitBan}
+                disabled={updating === banModal.username}
+                className="text-xs px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {updating === banModal.username ? "banlanıyor..." : "banla"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

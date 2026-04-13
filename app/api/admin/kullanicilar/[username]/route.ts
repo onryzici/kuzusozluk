@@ -203,24 +203,37 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     select: { id: true },
   })).map((e) => e.id);
 
-  await prisma.$transaction([
-    prisma.notification.deleteMany({ where: { OR: [{ userId: user.id }, { actorId: user.id }] } }),
-    prisma.topicDraft.deleteMany({ where: { authorId: user.id } }),
-    prisma.pollVote.deleteMany({ where: { userId: user.id } }),
-    prisma.poll.deleteMany({ where: { authorId: user.id } }),
-    prisma.block.deleteMany({ where: { OR: [{ blockerId: user.id }, { blockedId: user.id }] } }),
-    prisma.ukde.deleteMany({ where: { OR: [{ authorId: user.id }, { claimedById: user.id }] } }),
-    prisma.topicFollow.deleteMany({ where: { userId: user.id } }),
-    prisma.report.deleteMany({ where: { OR: [{ reporterId: user.id }, { entryId: { in: entryIds } }] } }),
-    prisma.comment.deleteMany({ where: { OR: [{ authorId: user.id }, { entryId: { in: entryIds } }] } }),
-    prisma.vote.deleteMany({ where: { OR: [{ userId: user.id }, { entryId: { in: entryIds } }] } }),
-    prisma.favorite.deleteMany({ where: { OR: [{ userId: user.id }, { entryId: { in: entryIds } }] } }),
-    prisma.follow.deleteMany({ where: { OR: [{ followerId: user.id }, { followingId: user.id }] } }),
-    prisma.message.deleteMany({ where: { OR: [{ senderId: user.id }, { receiverId: user.id }] } }),
-    prisma.emailToken.deleteMany({ where: { userId: user.id } }),
-    prisma.entry.deleteMany({ where: { authorId: user.id } }),
-    prisma.user.delete({ where: { id: user.id } }),
-  ]);
+  try {
+    await prisma.$transaction([
+      prisma.notification.deleteMany({ where: { OR: [{ userId: user.id }, { actorId: user.id }] } }),
+      prisma.topicDraft.deleteMany({ where: { authorId: user.id } }),
+      prisma.pollVote.deleteMany({ where: { userId: user.id } }),
+      prisma.poll.deleteMany({ where: { authorId: user.id } }),
+      prisma.block.deleteMany({ where: { OR: [{ blockerId: user.id }, { blockedId: user.id }] } }),
+      prisma.ukde.deleteMany({ where: { OR: [{ authorId: user.id }, { claimedById: user.id }] } }),
+      prisma.topicFollow.deleteMany({ where: { userId: user.id } }),
+      prisma.report.deleteMany({ where: { OR: [{ reporterId: user.id }, { entryId: { in: entryIds } }] } }),
+      prisma.comment.deleteMany({ where: { OR: [{ authorId: user.id }, { entryId: { in: entryIds } }] } }),
+      prisma.vote.deleteMany({ where: { OR: [{ userId: user.id }, { entryId: { in: entryIds } }] } }),
+      prisma.favorite.deleteMany({ where: { OR: [{ userId: user.id }, { entryId: { in: entryIds } }] } }),
+      prisma.follow.deleteMany({ where: { OR: [{ followerId: user.id }, { followingId: user.id }] } }),
+      prisma.message.deleteMany({ where: { OR: [{ senderId: user.id }, { receiverId: user.id }] } }),
+      prisma.emailToken.deleteMany({ where: { userId: user.id } }),
+      prisma.announcement.deleteMany({ where: { authorId: user.id } }),
+      prisma.upload.deleteMany({ where: { uploaderId: user.id } }),
+      prisma.gameScore.deleteMany({ where: { userId: user.id } }),
+      prisma.pushSubscription.deleteMany({ where: { userId: user.id } }),
+      prisma.auditLog.deleteMany({ where: { userId: user.id } }),
+      prisma.entry.deleteMany({ where: { authorId: user.id } }),
+      prisma.user.delete({ where: { id: user.id } }),
+    ]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { success: false, error: { code: "DELETE_FAILED", message: `silinemedi: ${msg.slice(0, 200)}` } },
+      { status: 500 }
+    );
+  }
 
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || null;
   await logAction("USER_DELETE", session.user.id, `${username} hesabi silindi`, ip);

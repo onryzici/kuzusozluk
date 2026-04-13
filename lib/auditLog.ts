@@ -17,7 +17,8 @@ export type AuditAction =
   | "MESSAGE_SEND"
   | "REPORT_REVIEW"
   | "LOGIN"
-  | "REGISTER";
+  | "REGISTER"
+  | "AUTHOR_PURGE";
 
 export async function logAction(
   action: AuditAction,

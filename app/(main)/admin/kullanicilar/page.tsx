@@ -15,7 +15,7 @@ type User = {
   createdAt: string;
 };
 
-const ROLES = ["CAYLAK", "USER", "AUTHOR", "CO_MOD", "MODERATOR", "ADMIN"] as const;
+const ROLES = ["CAYLAK", "USER", "CO_MOD", "MODERATOR", "ADMIN"] as const;
 
 type BanModalState = {
   username: string;
@@ -126,9 +126,28 @@ export default function KullanicilarPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">kullanicilar ({total})</h1>
-        <Link href="/admin" className="text-sm text-muted-foreground hover:underline">
-          admin paneli
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={async () => {
+              if (!window.confirm("tüm AUTHOR rolündeki kullanıcıları USER'a çevirmek istiyor musun?")) return;
+              const res = await fetch("/api/admin/author-temizle", { method: "POST" });
+              const json = await res.json();
+              if (json.success) {
+                alert(`${json.data.converted} kullanıcı user'a çevrildi`);
+                fetchUsers(page, search);
+              } else {
+                alert(json.error?.message || "hata");
+              }
+            }}
+            className="text-xs px-2 py-1 border rounded hover:bg-accent"
+            title="AUTHOR rolu kaldirildigi icin mevcut author'lari user'a cevirir"
+          >
+            author → user
+          </button>
+          <Link href="/admin" className="text-sm text-muted-foreground hover:underline">
+            admin paneli
+          </Link>
+        </div>
       </div>
 
       <input

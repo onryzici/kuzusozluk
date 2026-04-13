@@ -8,7 +8,7 @@ import { redis } from "@/lib/redis";
 
 const updateSchema = z.object({
   isBanned: z.boolean().optional(),
-  role: z.enum(["CAYLAK", "USER", "AUTHOR", "CO_MOD", "MODERATOR", "ADMIN"]).optional(),
+  role: z.enum(["CAYLAK", "USER", "CO_MOD", "MODERATOR", "ADMIN"]).optional(),
   banIp: z.boolean().optional(),
   purgeContent: z.boolean().optional(),
   banReason: z.string().max(500).optional(),
@@ -98,9 +98,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   if (isCoMod) {
     // CO_MOD banlayabilir ama rol yalnızca CAYLAK/USER/AUTHOR arasında değiştirilebilir
-    if (parsed.data.role && !["CAYLAK", "USER", "AUTHOR"].includes(parsed.data.role)) {
+    if (parsed.data.role && !["CAYLAK", "USER"].includes(parsed.data.role)) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "sadece çaylak ve yazar rolleri atayabilirsiniz" } },
+        { success: false, error: { code: "FORBIDDEN", message: "sadece çaylak ve user rolleri atayabilirsiniz" } },
         { status: 403 }
       );
     }
@@ -110,7 +110,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     isBanned?: boolean;
     bannedAt?: Date | null;
     banReason?: string | null;
-    role?: "CAYLAK" | "USER" | "AUTHOR" | "CO_MOD" | "MODERATOR" | "ADMIN";
+    role?: "CAYLAK" | "USER" | "CO_MOD" | "MODERATOR" | "ADMIN";
   } = {};
   if (parsed.data.isBanned !== undefined) {
     data.isBanned = parsed.data.isBanned;

@@ -83,9 +83,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (session.user.role === "CAYLAK") {
+  // DB'den güncel rolü al — JWT eskimiş olabilir
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+  if (dbUser?.role === "CAYLAK") {
     return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN", message: "çaylaklar başlık açamaz. önce yazar olmanız gerekiyor." } },
+      { success: false, error: { code: "FORBIDDEN", message: "çaylaklar başlık açamaz. admin terfi verdikten sonra açabilirsiniz." } },
       { status: 403 }
     );
   }

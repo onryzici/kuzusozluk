@@ -13,12 +13,17 @@ export default async function YeniBaslikSayfa({ searchParams }: Props) {
     redirect("/giris?callbackUrl=/baslik/yeni");
   }
 
-  if (session.user.role === "CAYLAK") {
+  // DB'den güncel rolü al — JWT eskimiş olabilir
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+  if (dbUser?.role === "CAYLAK") {
     return (
       <div className="px-4 py-10 max-w-lg mx-auto text-center space-y-3">
         <h1 className="text-base font-medium text-foreground">başlık açamazsınız</h1>
         <p className="text-sm text-muted-foreground">
-          çaylak rolündeki yazarlar başlık açamaz. entry yazmaya devam edin, yazar olunca başlık açabilirsiniz.
+          çaylak rolündeki yazarlar başlık açamaz. admin terfi verdikten sonra açabilirsiniz.
         </p>
       </div>
     );

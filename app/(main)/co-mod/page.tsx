@@ -22,7 +22,7 @@ type BanModalState = {
   banReason: string;
 };
 
-const COMOD_ROLES = ["CAYLAK", "USER", "AUTHOR"] as const;
+const COMOD_ROLES = ["CAYLAK", "USER"] as const;
 const BANNABLE_ROLES = new Set(["CAYLAK", "USER", "AUTHOR"]);
 
 export default function CoModPage() {
@@ -190,11 +190,17 @@ export default function CoModPage() {
                           className="text-xs border rounded px-1 py-0.5 bg-background disabled:opacity-50"
                         >
                           {canAct ? (
-                            COMOD_ROLES.map((r) => (
-                              <option key={r} value={r}>
-                                {r === "CAYLAK" ? "çaylak" : r === "USER" ? "user" : "yazar"}
-                              </option>
-                            ))
+                            <>
+                              {/* mevcut rol AUTHOR ise selectte görünür ama seçenek olarak sunulmaz */}
+                              {!COMOD_ROLES.includes(user.role as typeof COMOD_ROLES[number]) && (
+                                <option value={user.role}>{user.role.toLowerCase()}</option>
+                              )}
+                              {COMOD_ROLES.map((r) => (
+                                <option key={r} value={r}>
+                                  {r === "CAYLAK" ? "çaylak" : "user"}
+                                </option>
+                              ))}
+                            </>
                           ) : (
                             <option value={user.role}>{user.role.toLowerCase()}</option>
                           )}

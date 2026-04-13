@@ -19,10 +19,11 @@ export async function GET(request: NextRequest) {
   const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("boyut") || "20")));
   const search = searchParams.get("q") || "";
 
-  // CO_MOD sadece CAYLAK, USER ve AUTHOR görebilir
+  // CO_MOD sadece CAYLAK, USER (eski AUTHOR'lar dahil) görebilir
   const roleFilter = isCoMod
     ? { role: { in: ["CAYLAK" as const, "USER" as const, "AUTHOR" as const] } }
     : {};
+  // AUTHOR kaldirildi ama eski kayitlar kaldirilana kadar gorunur kalsin
 
   const where = {
     ...roleFilter,

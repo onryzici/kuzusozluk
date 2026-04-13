@@ -60,11 +60,12 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Avatar: 256x256 cover, webp, kalite 82 → ~10-25KB
+    // Avatar: 96x96 cover (retina 2x icin yeterli, profilde max 56px gosteriliyor)
+    // webp kalite 80 → ~4-8KB
     const resized = await sharp(buffer, { animated: false })
       .rotate()
-      .resize(256, 256, { fit: "cover", position: "center" })
-      .webp({ quality: 82 })
+      .resize(96, 96, { fit: "cover", position: "center" })
+      .webp({ quality: 80 })
       .toBuffer();
 
     const upload = await prisma.upload.create({

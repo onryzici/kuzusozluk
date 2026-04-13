@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
 
       const resized = await sharp(raw, { animated: false })
         .rotate()
-        .resize(256, 256, { fit: "cover", position: "center" })
-        .webp({ quality: 82 })
+        .resize(96, 96, { fit: "cover", position: "center" })
+        .webp({ quality: 80 })
         .toBuffer();
 
       const upload = await prisma.upload.create({

@@ -144,6 +144,23 @@ export default function KullanicilarPage() {
           >
             author → user
           </button>
+          <button
+            onClick={async () => {
+              if (!window.confirm("base64 avatarları küçültüp dosyaya çevirmek istiyor musun? (tek seferlik, geri alınamaz)")) return;
+              const res = await fetch("/api/admin/avatar-migrate", { method: "POST" });
+              const json = await res.json();
+              if (json.success) {
+                alert(`tarandı: ${json.data.scanned}\ngöç edildi: ${json.data.migrated}\natlandı: ${json.data.skipped}\nhata: ${json.data.errors.length}`);
+                fetchUsers(page, search);
+              } else {
+                alert(json.error?.message || "hata");
+              }
+            }}
+            className="text-xs px-2 py-1 border rounded hover:bg-accent"
+            title="data:... ile kaydedilmis eski avatarlari Upload tablosuna tasir, icerik boyutunu onemli olcude dusurur"
+          >
+            avatar migrate
+          </button>
           <Link href="/admin" className="text-sm text-muted-foreground hover:underline">
             admin paneli
           </Link>

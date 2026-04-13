@@ -67,6 +67,12 @@ const oyunlar = [
     description: "donen tahtaya bicak firlat. hedef bolgelere isabet bonus, sapli bicaklara carpma.",
     emoji: "🔪",
   },
+  {
+    slug: "spot-gladyatoru",
+    title: "spot gladyatörü",
+    description: "karakterini yarat, arenada dövüş, altın topla, dükkandan eşya al, pvp yap. rpg + turn-based savaş.",
+    emoji: "⚔️",
+  },
 ];
 
 export default function AtariSalonuPage() {

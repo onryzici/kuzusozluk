@@ -54,6 +54,7 @@ model User {
   auditLogs      AuditLog[]
   gameScores     GameScore[]
   pushSubscriptions PushSubscription[]
+  gladiator      SpotGladiator?
 
   @@index([username])
   @@index([karma])
@@ -419,6 +420,262 @@ model AuditLog {
   @@index([createdAt])
   @@index([userId])
   @@index([action])
+}
+
+// ============================================================
+//  SPOT GLADYATÖRÜ — turn-based arena oyunu
+// ============================================================
+
+model SpotGladiator {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Kimlik & görünüm
+  name        String   @db.VarChar(40)
+  skinTone    Int      @default(1)    // 0-3
+  hairStyle   Int      @default(0)    // 0-4
+  hairColor   Int      @default(0)    // 0-5
+  armorTint   Int      @default(0)    // 0-5
+  weaponTint  Int      @default(0)
+
+  // İlerleme
+  level       Int      @default(1)
+  xp          Int      @default(0)
+  gold        Int      @default(100)
+  statPoints  Int      @default(5)
+  skillPoints Int      @default(0)
+
+  // Ham stat
+  strength    Int      @default(5)   // güç — hasar
+  agility     Int      @default(5)   // çeviklik — dodge/crit
+  vitality    Int      @default(5)   // dayanıklılık — HP
+  intelligence Int     @default(5)   // zeka — mana, yetenek şiddeti
+  charisma    Int      @default(5)   // karizma — shop indirim, PvP XP
+
+  // Savaşta taşınan durumlar (son maçtan kalan)
+  currentHp     Int    @default(50)
+  currentMana   Int    @default(20)
+  currentStamina Int   @default(30)
+
+  // İstatistik
+  winCount    Int      @default(0)
+  lossCount   Int      @default(0)
+  bossKills   Int      @default(0)
+  pvpWins     Int      @default(0)
+  pvpLosses   Int      @default(0)
+
+  // Tarihler
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastFight   DateTime?
+
+  envanter    SpotGladiatorEnvanter[]
+  ogrenilen   SpotGladiatorOgrenilen[]
+  maclar      SpotGladiatorMac[]
+  equipped    SpotGladiatorKusanmis?
+
+  @@index([level])
+  @@index([winCount])
+}
+
+// Kuşanılmış eşyalar — foreign key ile item slot'larına referans
+model SpotGladiatorKusanmis {
+  id           String @id @default(cuid())
+  gladiatorId  String @unique
+  gladiator    SpotGladiator @relation(fields: [gladiatorId], references: [id], onDelete: Cascade)
+
+  weaponItemId String?   // SpotEsya id
+  armorItemId  String?
+  helmetItemId String?
+  shieldItemId String?
+  bootsItemId  String?
+
+  updatedAt    DateTime @updatedAt
+}
+
+// Eşya kataloğu — seed edilen sabit liste
+model SpotEsya {
+  id          String   @id @default(cuid())
+  slug        String   @unique @db.VarChar(60)
+  name        String   @db.VarChar(60)
+  type        SpotEsyaTipi
+  price       Int
+  levelReq    Int      @default(1)
+  strReq      Int      @default(0)
+  agiReq      Int      @default(0)
+
+  // Stat etkisi
+  attackBonus  Int     @default(0)
+  defenseBonus Int     @default(0)
+  hpBonus      Int     @default(0)
+  manaBonus    Int     @default(0)
+  critBonus    Int     @default(0)     // percent point
+  dodgeBonus   Int     @default(0)     // percent point
+
+  rarity      SpotNadirlik @default(COMMON)
+  icon        String?  @db.VarChar(20)
+  description String?  @db.VarChar(200)
+  createdAt   DateTime @default(now())
+
+  envanter    SpotGladiatorEnvanter[]
+
+  @@index([type])
+  @@index([levelReq])
+}
+
+enum SpotEsyaTipi {
+  WEAPON
+  ARMOR
+  HELMET
+  SHIELD
+  BOOTS
+  POTION_HP
+  POTION_MANA
+}
+
+enum SpotNadirlik {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+model SpotGladiatorEnvanter {
+  id          String @id @default(cuid())
+  gladiatorId String
+  gladiator   SpotGladiator @relation(fields: [gladiatorId], references: [id], onDelete: Cascade)
+  itemId      String
+  item        SpotEsya @relation(fields: [itemId], references: [id])
+  count       Int     @default(1)
+  acquiredAt  DateTime @default(now())
+
+  @@unique([gladiatorId, itemId])
+  @@index([gladiatorId])
+}
+
+// AI rakip kataloğu
+model SpotDusman {
+  id          String @id @default(cuid())
+  slug        String @unique @db.VarChar(60)
+  name        String @db.VarChar(60)
+  tier        Int    @default(1)     // 1-5
+  levelMin    Int    @default(1)
+  levelMax    Int    @default(99)
+  isBoss      Boolean @default(false)
+
+  // Stats
+  strength    Int    @default(5)
+  agility     Int    @default(5)
+  vitality    Int    @default(5)
+  intelligence Int   @default(5)
+
+  // Fixed equipment bonuses
+  attackBonus  Int   @default(0)
+  defenseBonus Int   @default(0)
+  hpBonus      Int   @default(0)
+
+  goldReward  Int    @default(20)
+  xpReward    Int    @default(25)
+
+  ascii       String? @db.VarChar(600)  // pixel/vector render hint
+  taunt       String? @db.VarChar(200)
+  createdAt   DateTime @default(now())
+
+  @@index([tier])
+  @@index([isBoss])
+}
+
+// Yetenek kataloğu
+model SpotYetenek {
+  id           String @id @default(cuid())
+  slug         String @unique @db.VarChar(60)
+  name         String @db.VarChar(60)
+  branch       SpotYetenekDali
+  levelReq     Int    @default(1)
+  strReq       Int    @default(0)
+  agiReq       Int    @default(0)
+  intReq       Int    @default(0)
+  manaCost     Int    @default(0)
+  staminaCost  Int    @default(5)
+
+  // Etki
+  effectKind   SpotYetenekEtki
+  power        Int    @default(100)  // multiplier *0.01 — 100=1.0x, 250=2.5x
+  description  String @db.VarChar(300)
+  icon         String? @db.VarChar(20)
+  createdAt    DateTime @default(now())
+
+  ogrenilen    SpotGladiatorOgrenilen[]
+
+  @@index([branch])
+}
+
+enum SpotYetenekDali {
+  GUC
+  CEVIKLIK
+  ZEKA
+  GENEL
+}
+
+enum SpotYetenekEtki {
+  DAMAGE          // tek vuruş bonus
+  DAMAGE_AOE      // (future)
+  HEAL            // HP iyileştir
+  STAMINA_REFILL
+  BUFF_ATTACK
+  BUFF_DEFENSE
+  DEBUFF_ENEMY
+  STUN
+  LIFESTEAL
+}
+
+model SpotGladiatorOgrenilen {
+  id          String @id @default(cuid())
+  gladiatorId String
+  gladiator   SpotGladiator @relation(fields: [gladiatorId], references: [id], onDelete: Cascade)
+  skillId     String
+  skill       SpotYetenek @relation(fields: [skillId], references: [id])
+  learnedAt   DateTime @default(now())
+
+  @@unique([gladiatorId, skillId])
+  @@index([gladiatorId])
+}
+
+model SpotGladiatorMac {
+  id          String @id @default(cuid())
+  gladiatorId String
+  gladiator   SpotGladiator @relation(fields: [gladiatorId], references: [id], onDelete: Cascade)
+
+  opponentType SpotMacTipi
+  opponentRef  String          // SpotDusman.slug veya User.id (PvP)
+  opponentName String @db.VarChar(80)
+
+  result       SpotMacSonuc
+  roundsElapsed Int   @default(0)
+  goldEarned   Int   @default(0)
+  xpEarned     Int   @default(0)
+  log          String @db.Text       // JSON turlar
+
+  createdAt    DateTime @default(now())
+
+  @@index([gladiatorId, createdAt])
+  @@index([opponentType])
+}
+
+enum SpotMacTipi {
+  ARENA
+  BOSS
+  PVP
+  TOURNAMENT
+}
+
+enum SpotMacSonuc {
+  WIN
+  LOSS
+  DRAW
+  FLED
 }
 
 model BannedIp {

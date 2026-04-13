@@ -98,6 +98,8 @@ type Dusman = {
   goldReward: number;
   xpReward: number;
   taunt: string | null;
+  todayCount?: number;
+  fightsRemaining?: number;
 };
 type PvPRakip = {
   id: string;
@@ -105,9 +107,16 @@ type PvPRakip = {
   avatarUrl: string | null;
   name: string;
   level: number;
+  strength: number;
+  agility: number;
+  vitality: number;
+  intelligence: number;
+  totalPower: number;
   winCount: number;
   lossCount: number;
   pvpWins: number;
+  todayCount?: number;
+  fightsRemaining?: number;
 };
 type Liderlik = {
   byLevel: { name: string; username: string; level: number; winCount: number }[];
@@ -223,9 +232,7 @@ export default function SpotGladyatoru() {
 // ------------ Header ------------
 
 function Header({ g, view, setView }: { g: Gladiator; view: View; setView: (v: View) => void }) {
-  const xpNeeded = g.level <= 10 ? 50 + g.level * 50 : 550 + (g.level - 10) * 120;
-  const xpPct = Math.min(100, Math.round((g.xp / xpNeeded) * 100));
-  const hpPct = Math.round((g.currentHp / Math.max(1, 30 + g.vitality * 6 + (g.equipped ? 0 : 0) + g.level * 5)) * 100);
+  const totalStats = g.strength + g.agility + g.vitality + g.intelligence;
 
   return (
     <div className="border border-border rounded-lg bg-card p-3 flex items-center gap-3">
@@ -240,22 +247,16 @@ function Header({ g, view, setView }: { g: Gladiator; view: View; setView: (v: V
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h2 className="text-sm font-bold">{g.name}</h2>
-          <span className="text-[10px] px-1.5 rounded bg-primary/10 text-primary">lv {g.level}</span>
           <span className="text-[10px] px-1.5 rounded bg-purple-500/10 text-purple-500 italic">{computeTitle(g)}</span>
           {g.statPoints > 0 && <span className="text-[10px] px-1.5 rounded bg-amber-500/20 text-amber-500 font-bold">+{g.statPoints} stat</span>}
           {g.skillPoints > 0 && <span className="text-[10px] px-1.5 rounded bg-blue-500/20 text-blue-500 font-bold">+{g.skillPoints} skill</span>}
         </div>
-        <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
           <span className="flex items-center gap-0.5"><Coins className="h-3 w-3" />{g.gold}</span>
           <span className="flex items-center gap-0.5"><Trophy className="h-3 w-3" />{g.winCount}-{g.lossCount}</span>
           <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{g.pvpWins}-{g.pvpLosses}</span>
-        </div>
-        <div className="flex items-center gap-1 mt-1">
-          <span className="text-[9px] text-muted-foreground w-6">xp</span>
-          <div className="flex-1 h-1 bg-border/40 rounded overflow-hidden">
-            <div className="h-full bg-amber-500" style={{ width: `${xpPct}%` }} />
-          </div>
-          <span className="text-[9px] text-muted-foreground">{g.xp}/{xpNeeded}</span>
+          <span>güç {totalStats}</span>
+          <span>şan {g.xp}</span>
         </div>
       </div>
       {view !== "hub" && (
@@ -476,19 +477,40 @@ function StatsScreen({ g, onRefresh, setMsg, onBack }: {
     }
   }
 
-  const stats: { key: "strength" | "agility" | "vitality" | "intelligence" | "charisma"; label: string; desc: string; icon: string }[] = [
-    { key: "strength", label: "güç", desc: "saldırı hasarı", icon: "💪" },
-    { key: "agility", label: "çeviklik", desc: "kaçınma + kritik", icon: "🏃" },
-    { key: "vitality", label: "dayanıklılık", desc: "max hp + stamina", icon: "❤️" },
-    { key: "intelligence", label: "zeka", desc: "max mana + büyü gücü", icon: "🧠" },
-    { key: "charisma", label: "karizma", desc: "dükkan indirimi + pvp xp", icon: "✨" },
+  const stats: { key: "strength" | "agility" | "vitality" | "intelligence" | "charisma"; label: string; desc: string; icon: string; next: string }[] = [
+    { key: "strength", label: "güç", desc: "her puan: +3 saldırı, +0.5 savunma", icon: "💪", next: `sıradaki: +3 saldırı` },
+    { key: "agility", label: "çeviklik", desc: "her puan: +1% krit, +0.8% kaçınma, +2 stamina", icon: "🏃", next: "sıradaki: +%1 krit şansı" },
+    { key: "vitality", label: "dayanıklılık", desc: "her puan: +10 hp, +0.8 savunma, +3 stamina", icon: "❤️", next: "sıradaki: +10 hp" },
+    { key: "intelligence", label: "zeka", desc: "her puan: +5 mana, +%5 büyü gücü", icon: "🧠", next: "sıradaki: +5 mana" },
+    { key: "charisma", label: "karizma", desc: "her puan: %0.5 dükkan indirimi", icon: "✨", next: "sıradaki: indirim +%0.5" },
   ];
+
+  // Derived stats preview
+  const maxHp = 60 + g.vitality * 10;
+  const maxMana = 15 + g.intelligence * 5;
+  const maxStamina = 25 + g.vitality * 3 + g.agility * 2;
+  const baseAtk = 5 + g.strength * 3;
+  const baseDef = Math.floor(g.vitality * 0.8) + Math.floor(g.strength * 0.5);
+  const critPct = Math.min(65, 2 + g.agility);
+  const dodgePct = Math.min(55, 2 + Math.floor(g.agility * 0.8));
 
   return (
     <div className="border border-border rounded-lg p-3 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold">statlar</h3>
         <span className="text-xs text-muted-foreground">kalan puan: <b className="text-primary">{g.statPoints}</b></span>
+      </div>
+
+      {/* derived stats özeti */}
+      <div className="grid grid-cols-2 gap-1.5 text-[11px] bg-accent/30 p-2 rounded">
+        <div>❤️ max hp: <b>{maxHp}</b></div>
+        <div>🔵 max mana: <b>{maxMana}</b></div>
+        <div>⚡ max stamina: <b>{maxStamina}</b></div>
+        <div>⚔ saldırı: <b>{baseAtk}</b></div>
+        <div>🛡 savunma: <b>{baseDef}</b></div>
+        <div>💥 krit: <b>%{critPct}</b></div>
+        <div>👟 kaçınma: <b>%{dodgePct}</b></div>
+        <div>💰 indirim: <b>%{Math.min(25, Math.floor(g.charisma * 0.5))}</b></div>
       </div>
 
       <div className="space-y-1.5">
@@ -642,7 +664,7 @@ function ShopScreen({ g, onRefresh, setMsg, onBack }: {
     }
   }
 
-  const discountPct = Math.min(20, Math.floor(g.charisma * 0.4));
+  const discountPct = Math.min(25, Math.floor(g.charisma * 0.5));
 
   const filtered = filter === "ALL" ? items : items.filter((i) => i.type === filter);
   const types = ["ALL", "WEAPON", "ARMOR", "HELMET", "SHIELD", "BOOTS", "POTION_HP", "POTION_MANA"];
@@ -671,10 +693,9 @@ function ShopScreen({ g, onRefresh, setMsg, onBack }: {
       <div className="space-y-1 max-h-[60vh] overflow-y-auto">
         {filtered.map((e) => {
           const price = Math.round(e.price * (1 - discountPct / 100));
-          const lvOk = g.level >= e.levelReq;
           const strOk = g.strength >= e.strReq;
           const agiOk = g.agility >= e.agiReq;
-          const canBuy = lvOk && strOk && agiOk && g.gold >= price;
+          const canBuy = strOk && agiOk && g.gold >= price;
           return (
             <div key={e.id} className="flex items-center gap-2 p-2 border border-border/60 rounded">
               <span className="text-lg">{e.icon || "📦"}</span>
@@ -682,7 +703,6 @@ function ShopScreen({ g, onRefresh, setMsg, onBack }: {
                 <div className={`text-sm font-medium ${RARITY_COLOR[e.rarity]}`}>{e.name}</div>
                 <div className="text-[10px] text-muted-foreground">
                   {TYPE_LABEL[e.type]}
-                  {e.levelReq > 1 && <span className={lvOk ? "" : "text-destructive"}> • lv {e.levelReq}</span>}
                   {e.strReq > 0 && <span className={strOk ? "" : "text-destructive"}> • güç {e.strReq}</span>}
                   {e.agiReq > 0 && <span className={agiOk ? "" : "text-destructive"}> • çev {e.agiReq}</span>}
                 </div>
@@ -774,11 +794,10 @@ function SkillsScreen({ g, onRefresh, setMsg, onBack }: {
           </h4>
           {byBranch[branch].map((s) => {
             const known = knownSlugs.has(s.slug);
-            const lvOk = g.level >= s.levelReq;
             const strOk = g.strength >= s.strReq;
             const agiOk = g.agility >= s.agiReq;
             const intOk = g.intelligence >= s.intReq;
-            const canLearn = !known && lvOk && strOk && agiOk && intOk && g.skillPoints > 0;
+            const canLearn = !known && strOk && agiOk && intOk && g.skillPoints > 0;
             return (
               <div key={s.id} className={`p-2 border rounded ${known ? "border-green-500/40 bg-green-500/5" : "border-border/60"}`}>
                 <div className="flex items-center justify-between">
@@ -789,12 +808,11 @@ function SkillsScreen({ g, onRefresh, setMsg, onBack }: {
                     </div>
                     <div className="text-[10px] text-muted-foreground">{s.description}</div>
                     <div className="text-[10px] mt-0.5 text-muted-foreground">
-                      <span className={lvOk ? "" : "text-destructive"}>lv {s.levelReq}</span>
-                      {s.strReq > 0 && <span className={strOk ? "" : "text-destructive"}> • güç {s.strReq}</span>}
-                      {s.agiReq > 0 && <span className={agiOk ? "" : "text-destructive"}> • çev {s.agiReq}</span>}
-                      {s.intReq > 0 && <span className={intOk ? "" : "text-destructive"}> • zeka {s.intReq}</span>}
-                      {s.staminaCost > 0 && <span> • {s.staminaCost} stamina</span>}
-                      {s.manaCost > 0 && <span> • {s.manaCost} mana</span>}
+                      {s.strReq > 0 && <span className={strOk ? "" : "text-destructive"}>güç {s.strReq} </span>}
+                      {s.agiReq > 0 && <span className={agiOk ? "" : "text-destructive"}>çev {s.agiReq} </span>}
+                      {s.intReq > 0 && <span className={intOk ? "" : "text-destructive"}>zeka {s.intReq} </span>}
+                      {s.staminaCost > 0 && <span>• {s.staminaCost} sta </span>}
+                      {s.manaCost > 0 && <span>• {s.manaCost} mana</span>}
                     </div>
                   </div>
                   {!known && (
@@ -878,35 +896,40 @@ function ArenaScreen({ g, onRefresh, setMsg, onBack }: {
       {list.length === 0 && (
         <p className="text-xs text-muted-foreground py-4 text-center">yükleniyor...</p>
       )}
+      <p className="text-[10px] text-muted-foreground">günde aynı rakiple en fazla 3 kez. 1. dövüş tam ödül, 2. yarı, 3. çeyrek.</p>
       <div className="space-y-1.5">
-        {list.map((d) => (
-          <div key={d.slug} className={`p-2 border rounded ${d.isBoss ? "border-amber-500/60 bg-amber-500/5" : "border-border/60"}`}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">
-                  {d.isBoss && "👑 "}{d.name}
-                  <span className="text-[10px] ml-1 text-muted-foreground">lv {d.levelMin}-{d.levelMax}</span>
+        {list.map((d) => {
+          const remaining = d.fightsRemaining ?? 3;
+          const tierIcon = d.isBoss ? "👑" : d.tier >= 4 ? "🔥" : d.tier >= 2 ? "⚔" : "🗡";
+          return (
+            <div key={d.slug} className={`p-2 border rounded ${d.isBoss ? "border-amber-500/60 bg-amber-500/5" : remaining === 0 ? "border-border/30 opacity-60" : "border-border/60"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">
+                    {tierIcon} {d.name}
+                    <span className="text-[10px] ml-1 text-muted-foreground">tier {d.tier}</span>
+                  </div>
+                  {d.taunt && <p className="text-[10px] italic text-muted-foreground">&ldquo;{d.taunt}&rdquo;</p>}
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    güç {d.strength} • çev {d.agility} • day {d.vitality} • zek {d.intelligence}
+                  </div>
                 </div>
-                {d.taunt && <p className="text-[10px] italic text-muted-foreground">&ldquo;{d.taunt}&rdquo;</p>}
-                <div className="text-[10px] text-muted-foreground mt-0.5">
-                  güç {d.strength} • çev {d.agility} • day {d.vitality}
+                <div className="text-right shrink-0">
+                  <div className={`text-[10px] ${remaining === 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                    {3 - remaining}/3
+                  </div>
+                  <button
+                    disabled={remaining === 0}
+                    onClick={() => setFighting(d)}
+                    className="text-[11px] mt-1 px-2 py-0.5 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 disabled:opacity-30"
+                  >
+                    {remaining === 0 ? "dolu" : "dövüş"}
+                  </button>
                 </div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-[10px] text-amber-500 flex items-center gap-0.5 justify-end">
-                  <Coins className="h-2.5 w-2.5" />{d.goldReward}
-                </div>
-                <div className="text-[10px] text-muted-foreground">+{d.xpReward} xp</div>
-                <button
-                  onClick={() => setFighting(d)}
-                  className="text-[11px] mt-1 px-2 py-0.5 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
-                >
-                  dövüş
-                </button>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <button onClick={onBack} className="w-full py-1.5 text-xs border rounded hover:bg-accent">kapat</button>
     </div>
@@ -923,7 +946,7 @@ function PvPScreen({ g, onRefresh, setMsg, onBack }: {
 }) {
   const [list, setList] = useState<PvPRakip[]>([]);
   const [battle, setBattle] = useState<SpotBattleResult | null>(null);
-  const [reward, setReward] = useState<{ gold: number; xp: number; leveledUp: boolean; newLevel: number } | null>(null);
+  const [reward, setReward] = useState<{ gold: number; xp: number; statPointsGained?: number; skillPointsGained?: number; fightsRemaining?: number } | null>(null);
   const [fighting, setFighting] = useState<PvPRakip | null>(null);
   const [loadingFight, setLoadingFight] = useState(false);
 
@@ -992,22 +1015,32 @@ function PvPScreen({ g, onRefresh, setMsg, onBack }: {
         <p className="text-xs text-muted-foreground py-4 text-center">seviyene uygun rakip yok.</p>
       )}
       {loadingFight && <p className="text-xs text-muted-foreground">dövüşülüyor...</p>}
+      <p className="text-[10px] text-muted-foreground">level gate yok — kime güvenirsen onunla savaş. günde aynı rakiple max 3.</p>
       <div className="space-y-1.5">
-        {list.map((r) => (
-          <div key={r.id} className="p-2 border border-border/60 rounded flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">{r.name} <span className="text-[10px] text-muted-foreground">lv {r.level}</span></div>
-              <div className="text-[10px] text-muted-foreground">{r.username} • {r.winCount}-{r.lossCount} arena, {r.pvpWins} pvp</div>
+        {list.map((r) => {
+          const remaining = r.fightsRemaining ?? 3;
+          return (
+            <div key={r.id} className={`p-2 border rounded flex items-center justify-between gap-2 ${remaining === 0 ? "border-border/30 opacity-60" : "border-border/60"}`}>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium">{r.name} <span className="text-[10px] text-muted-foreground">@{r.username}</span></div>
+                <div className="text-[10px] text-muted-foreground">
+                  güç {r.strength} • çev {r.agility} • day {r.vitality} • zek {r.intelligence} (toplam {r.totalPower})
+                </div>
+                <div className="text-[10px] text-muted-foreground">{r.winCount}-{r.lossCount} arena • {r.pvpWins} pvp</div>
+              </div>
+              <div className="text-right">
+                <div className={`text-[10px] ${remaining === 0 ? "text-destructive" : "text-muted-foreground"}`}>{3 - remaining}/3</div>
+                <button
+                  disabled={loadingFight || remaining === 0}
+                  onClick={() => fight(r)}
+                  className="text-[11px] mt-1 px-2 py-0.5 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 disabled:opacity-30"
+                >
+                  {remaining === 0 ? "dolu" : "dövüş"}
+                </button>
+              </div>
             </div>
-            <button
-              disabled={loadingFight}
-              onClick={() => fight(r)}
-              className="text-[11px] px-2 py-0.5 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 disabled:opacity-30"
-            >
-              dövüş
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <button onClick={onBack} className="w-full py-1.5 text-xs border rounded hover:bg-accent">kapat</button>
     </div>
@@ -1026,7 +1059,7 @@ function BattleReplay({
   playerG: Gladiator;
   enemy: Dusman;
   battle: SpotBattleResult;
-  reward: { gold: number; xp: number; leveledUp: boolean; newLevel: number } | null;
+  reward: { gold: number; xp: number; statPointsGained?: number; skillPointsGained?: number; fightsRemaining?: number } | null;
   onClose: () => void;
 }) {
   const [turnIdx, setTurnIdx] = useState(0);
@@ -1139,8 +1172,8 @@ function BattleReplay({
           </div>
           {reward && (battle.outcome === "player_win" || battle.outcome === "enemy_win") && (
             <div className="text-xs text-muted-foreground mt-1">
-              +{reward.gold} altın • +{reward.xp} xp
-              {reward.leveledUp && <span className="text-amber-500 font-bold"> • level {reward.newLevel}!</span>}
+              +{reward.gold} altın • +{reward.xp} şan
+              {(reward.statPointsGained ?? 0) > 0 && <span className="text-amber-500 font-bold"> • +{reward.statPointsGained} stat!</span>}
             </div>
           )}
         </div>
@@ -1279,7 +1312,7 @@ function TournamentScreen({ g, onRefresh, setMsg, onBack }: {
   const [equipBonuses, setEquipBonuses] = useState({
     attackBonus: 0, defenseBonus: 0, hpBonus: 0, manaBonus: 0, critBonus: 0, dodgeBonus: 0,
   });
-  const [finalReward, setFinalReward] = useState<{ gold: number; xp: number; leveledUp: boolean; newLevel: number } | null>(null);
+  const [finalReward, setFinalReward] = useState<{ gold: number; xp: number; statPointsGained?: number; skillPointsGained?: number; fightsRemaining?: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/gladiator/turnuva").then((r) => r.json()).then((j) => {
@@ -1357,7 +1390,8 @@ function TournamentScreen({ g, onRefresh, setMsg, onBack }: {
         {finalReward && (
           <div className="text-sm">
             <div><span className="text-amber-500 font-bold">+{finalReward.gold}</span> altın • <span className="text-blue-400 font-bold">+{finalReward.xp}</span> xp</div>
-            {finalReward.leveledUp && <div className="text-amber-400 font-bold mt-1">✨ LEVEL {finalReward.newLevel}!</div>}
+            {(finalReward.statPointsGained ?? 0) > 0 && <div className="text-amber-400 font-bold mt-1">✨ +{finalReward.statPointsGained} stat puanı</div>}
+            {(finalReward.skillPointsGained ?? 0) > 0 && <div className="text-blue-400 font-bold">+{finalReward.skillPointsGained} yetenek puanı</div>}
           </div>
         )}
         <button onClick={onBack} className="px-4 py-2 bg-primary text-primary-foreground rounded font-bold">kapat</button>

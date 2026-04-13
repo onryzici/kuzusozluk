@@ -67,7 +67,7 @@ export default function InteractiveBattle({
   player: Gladiator;
   playerEquipBonuses: { attackBonus: number; defenseBonus: number; hpBonus: number; manaBonus: number; critBonus: number; dodgeBonus: number };
   enemy: Dusman;
-  onFinish: (outcome: "player_win" | "enemy_win" | "flee", roundsElapsed: number, reward?: { gold: number; xp: number; leveledUp: boolean; newLevel: number }) => void;
+  onFinish: (outcome: "player_win" | "enemy_win" | "flee", roundsElapsed: number, reward?: { gold: number; xp: number; statPointsGained?: number; skillPointsGained?: number; fightsRemaining?: number }) => void;
 }) {
   // Combatant state in refs so engine can mutate them
   const playerRef = useRef<SpotCombatant>(
@@ -121,7 +121,7 @@ export default function InteractiveBattle({
   const [enemyHit, setEnemyHit] = useState(false);
   const [ended, setEnded] = useState<"player_win" | "enemy_win" | "flee" | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [reward, setReward] = useState<{ gold: number; xp: number; leveledUp: boolean; newLevel: number } | null>(null);
+  const [reward, setReward] = useState<{ gold: number; xp: number; statPointsGained?: number; skillPointsGained?: number; fightsRemaining?: number } | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(true);
   const [showSubMenu, setShowSubMenu] = useState<"attack" | "guard" | "skill" | "potion" | null>(null);
   const [flashColor, setFlashColor] = useState<"red" | "gold" | "green" | null>(null);
@@ -147,6 +147,8 @@ export default function InteractiveBattle({
       const json = await res.json();
       if (json.success) {
         setReward(json.data.reward);
+      } else if (json.error?.code === "DAILY_LIMIT") {
+        setReward({ gold: 0, xp: 0 });
       }
     } finally {
       setSubmitting(false);
@@ -642,7 +644,7 @@ function EndScreen({
   onClose,
 }: {
   outcome: "player_win" | "enemy_win" | "flee";
-  reward: { gold: number; xp: number; leveledUp: boolean; newLevel: number } | null;
+  reward: { gold: number; xp: number; statPointsGained?: number; skillPointsGained?: number; fightsRemaining?: number } | null;
   submitting: boolean;
   onClose: () => void;
 }) {
@@ -660,11 +662,19 @@ function EndScreen({
         <div className="text-sm space-y-1">
           <div>
             <span className="text-amber-500 font-bold">+{reward.gold}</span> altın •{" "}
-            <span className="text-blue-400 font-bold">+{reward.xp}</span> xp
+            <span className="text-blue-400 font-bold">+{reward.xp}</span> şan
           </div>
-          {reward.leveledUp && (
+          {(reward.statPointsGained ?? 0) > 0 && (
             <div className="text-lg font-bold text-amber-400 animate-pulse">
-              ✨ LEVEL {reward.newLevel}!
+              ✨ +{reward.statPointsGained} STAT PUANI!
+            </div>
+          )}
+          {(reward.skillPointsGained ?? 0) > 0 && (
+            <div className="text-sm font-bold text-blue-400">+{reward.skillPointsGained} yetenek puanı</div>
+          )}
+          {typeof reward.fightsRemaining === "number" && (
+            <div className="text-[11px] text-muted-foreground">
+              {reward.fightsRemaining === 0 ? "bu rakip için bugünün limiti doldu" : `bu rakiple ${reward.fightsRemaining} dövüş hakkın kaldı`}
             </div>
           )}
         </div>

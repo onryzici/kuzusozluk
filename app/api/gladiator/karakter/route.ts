@@ -65,8 +65,7 @@ export async function POST(request: NextRequest) {
   const baseStats = { strength: 5, agility: 5, vitality: 5, intelligence: 5 };
   const vitals = syncCurrentVitals(
     baseStats,
-    { attackBonus: 0, defenseBonus: 0, hpBonus: 0, manaBonus: 0, critBonus: 0, dodgeBonus: 0 },
-    1
+    { attackBonus: 0, defenseBonus: 0, hpBonus: 0, manaBonus: 0, critBonus: 0, dodgeBonus: 0 }
   );
 
   const g = await prisma.spotGladiator.create({

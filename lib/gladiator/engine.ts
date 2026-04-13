@@ -67,26 +67,41 @@ export type SpotBattleResult = {
 
 // ---------- Derived stats ----------
 
-export function deriveMaxHp(s: SpotStats, equip: SpotEquipBonuses, level: number): number {
-  return 30 + s.vitality * 6 + equip.hpBonus + level * 5;
+// ---- Stat matematiği ----
+// Tasarım: her stat'ın farkı hissedilir olsun, build'ler anlamlı olsun
+// STR: saldırı temel kaynağı (+3 saldırı/puan)
+// VIT: hp + savunma + stamina (+10 hp, +0.5 savunma, +3 stamina)
+// AGI: kritik + kaçınma + 2'nci saldırı (+1% krit, +1% dodge, +2 stamina)
+// INT: mana + büyü gücü (+5 mana, +% büyü çarpan)
+// CHA: dükkan indirimi + xp bonusu
+//
+// Level artık YOK — karakter gücü tamamen stat'lara bağlı.
+export function deriveMaxHp(s: SpotStats, equip: SpotEquipBonuses): number {
+  return 60 + s.vitality * 10 + equip.hpBonus;
 }
 export function deriveMaxMana(s: SpotStats, equip: SpotEquipBonuses): number {
-  return 10 + s.intelligence * 3 + equip.manaBonus;
+  return 15 + s.intelligence * 5 + equip.manaBonus;
 }
 export function deriveMaxStamina(s: SpotStats): number {
-  return 20 + s.vitality * 2 + s.agility * 1;
+  return 25 + s.vitality * 3 + s.agility * 2;
 }
 export function deriveAttack(s: SpotStats, equip: SpotEquipBonuses): number {
-  return 3 + s.strength * 2 + equip.attackBonus;
+  return 5 + s.strength * 3 + equip.attackBonus;
 }
 export function deriveDefense(s: SpotStats, equip: SpotEquipBonuses): number {
-  return s.vitality + Math.floor(s.strength / 2) + equip.defenseBonus;
+  return Math.floor(s.vitality * 0.8) + Math.floor(s.strength * 0.5) + equip.defenseBonus;
 }
 export function deriveCritChance(s: SpotStats, equip: SpotEquipBonuses): number {
-  return Math.min(60, 3 + Math.floor(s.agility * 0.8) + equip.critBonus);
+  // 1 agi = 1% krit, max 65%
+  return Math.min(65, 2 + s.agility + equip.critBonus);
 }
 export function deriveDodgeChance(s: SpotStats, equip: SpotEquipBonuses): number {
-  return Math.min(50, 2 + Math.floor(s.agility * 0.6) + equip.dodgeBonus);
+  // 1 agi = 0.8% dodge, max 55%
+  return Math.min(55, 2 + Math.floor(s.agility * 0.8) + equip.dodgeBonus);
+}
+export function deriveSpellPower(s: SpotStats): number {
+  // INT → büyü hasarı çarpanı. 10 int = 1.5x, 20 int = 2x
+  return 1 + s.intelligence * 0.05;
 }
 
 // ---------- RNG (Mulberry32) ----------
@@ -152,9 +167,10 @@ export const SKILLS: Record<string, SkillDef> = {
     staminaCost: 0,
     manaCost: 20,
     apply(actor, target, rnd) {
-      const base = 8 + actor.stats.intelligence * 3;
-      const crit = rnd() < 0.25;
-      const dmg = Math.round(base * (crit ? 2 : 1));
+      // Büyü hasarı: INT × spellPower
+      const base = 10 + actor.stats.intelligence * 4;
+      const crit = rnd() < 0.28;
+      const dmg = Math.round(base * deriveSpellPower(actor.stats) * (crit ? 2 : 1));
       return { damage: dmg, critical: crit, note: "yıldırım!" };
     },
   },
@@ -444,7 +460,7 @@ export function simulateBattle(
 export function makeCombatant(base: {
   id: string;
   name: string;
-  level: number;
+  level?: number; // artık sadece gösterim için
   stats: SpotStats;
   equip: SpotEquipBonuses;
   skills: string[];
@@ -453,13 +469,13 @@ export function makeCombatant(base: {
   currentStamina?: number;
   refresh?: boolean;
 }): SpotCombatant {
-  const maxHp = deriveMaxHp(base.stats, base.equip, base.level);
+  const maxHp = deriveMaxHp(base.stats, base.equip);
   const maxMana = deriveMaxMana(base.stats, base.equip);
   const maxStamina = deriveMaxStamina(base.stats);
   return {
     id: base.id,
     name: base.name,
-    level: base.level,
+    level: base.level ?? 1,
     stats: base.stats,
     equip: base.equip,
     hp: base.refresh ? maxHp : base.currentHp ?? maxHp,

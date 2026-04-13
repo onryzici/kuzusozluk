@@ -41,13 +41,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Level/stat requirement
-  if (g.level < item.levelReq) {
-    return NextResponse.json(
-      { success: false, error: { code: "LEVEL_LOW", message: `seviye ${item.levelReq} gerekli` } },
-      { status: 400 }
-    );
-  }
+  // Sadece stat gerekliliği — level gate YOK
   if (g.strength < item.strReq) {
     return NextResponse.json(
       { success: false, error: { code: "STR_LOW", message: `güç ${item.strReq} gerekli` } },

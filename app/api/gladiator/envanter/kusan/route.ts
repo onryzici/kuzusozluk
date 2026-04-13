@@ -103,8 +103,7 @@ export async function POST(request: NextRequest) {
   const newEquip = await getEquippedBonuses(g.id);
   const vitals = syncCurrentVitals(
     { strength: g.strength, agility: g.agility, vitality: g.vitality, intelligence: g.intelligence },
-    newEquip,
-    g.level
+    newEquip
   );
   const updated = await prisma.spotGladiator.update({
     where: { id: g.id },

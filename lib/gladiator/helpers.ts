@@ -5,7 +5,6 @@ import {
   deriveMaxMana,
   deriveMaxStamina,
   makeCombatant,
-  xpForLevel,
 } from "./engine";
 import { DUSMANLAR, ESYALAR, YETENEKLER } from "./seedData";
 
@@ -77,7 +76,6 @@ export async function loadGladiatorCombatant(
   return makeCombatant({
     id: g.id,
     name: g.name,
-    level: g.level,
     stats: {
       strength: g.strength,
       agility: g.agility,
@@ -94,28 +92,46 @@ export async function loadGladiatorCombatant(
   });
 }
 
-export function computeLevelUp(
-  currentLevel: number,
-  currentXp: number,
-  gainedXp: number
-): { newLevel: number; newXp: number; statPointsGained: number; skillPointsGained: number } {
-  let level = currentLevel;
-  let xp = currentXp + gainedXp;
-  let statPoints = 0;
-  let skillPoints = 0;
-
-  while (level < 30) {
-    const need = xpForLevel(level);
-    if (xp >= need) {
-      xp -= need;
-      level++;
-      statPoints += 3;
-      // her 2 seviyede 1 skill puanı
-      if (level % 2 === 0) skillPoints += 1;
-    } else break;
+// Rakip difficulty → stat puanı + altın
+// tier 1 → 1 stat, tier 2 → 1 stat, tier 3 → 2 stat, boss → 3 stat + 1 skill
+export function rewardFromEnemy(tier: number, isBoss: boolean): {
+  statPoints: number;
+  skillPoints: number;
+  gold: number;
+  glory: number;
+} {
+  if (isBoss) {
+    return { statPoints: 3, skillPoints: 1, gold: 200 + tier * 100, glory: 100 + tier * 30 };
   }
+  if (tier >= 4) return { statPoints: 2, skillPoints: 0, gold: 80 + tier * 20, glory: 35 };
+  if (tier >= 2) return { statPoints: 1, skillPoints: 0, gold: 40 + tier * 10, glory: 15 };
+  return { statPoints: 1, skillPoints: 0, gold: 25, glory: 8 };
+}
 
-  return { newLevel: level, newXp: xp, statPointsGained: statPoints, skillPointsGained: skillPoints };
+// Günde bu rakibi kaç kez dövdü?
+export async function todayFightCount(
+  gladiatorId: string,
+  opponentRef: string,
+  opponentType: "ARENA" | "BOSS" | "PVP" | "TOURNAMENT"
+): Promise<number> {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return await prisma.spotGladiatorMac.count({
+    where: {
+      gladiatorId,
+      opponentRef,
+      opponentType,
+      createdAt: { gte: start },
+    },
+  });
+}
+
+// Aşınan ödül: 1. galibiyet tam, 2. %50, 3. %25, sonrası 0
+export function diminishingMultiplier(countBefore: number): number {
+  if (countBefore === 0) return 1;
+  if (countBefore === 1) return 0.5;
+  if (countBefore === 2) return 0.25;
+  return 0;
 }
 
 export function syncCurrentVitals(stats: {
@@ -123,9 +139,9 @@ export function syncCurrentVitals(stats: {
   agility: number;
   vitality: number;
   intelligence: number;
-}, equip: SpotEquipBonuses, level: number) {
+}, equip: SpotEquipBonuses) {
   return {
-    currentHp: deriveMaxHp(stats, equip, level),
+    currentHp: deriveMaxHp(stats, equip),
     currentMana: deriveMaxMana(stats, equip),
     currentStamina: deriveMaxStamina(stats),
   };

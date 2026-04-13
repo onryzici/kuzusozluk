@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { computeLevelUp, getEquippedBonuses, syncCurrentVitals } from "@/lib/gladiator/helpers";
+import { getEquippedBonuses, syncCurrentVitals } from "@/lib/gladiator/helpers";
 
 const schema = z.object({
   roundsCompleted: z.number().int().min(0).max(8),
@@ -37,27 +37,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Her bitirilen rakip için orta ödül, bracket tamamında büyük bonus
-  const perRound = 50 + g.level * 10;
-  const gold = parsed.data.roundsCompleted * perRound + (parsed.data.wonBracket ? 500 + g.level * 50 : 0);
-  const xp = parsed.data.roundsCompleted * Math.round(perRound * 1.2) + (parsed.data.wonBracket ? 500 + g.level * 80 : 0);
+  // Turnuva ödülü: her raund +stat puanı, bracket tamamı bonus skill puanı
+  const statPoints = parsed.data.roundsCompleted + (parsed.data.wonBracket ? 2 : 0);
+  const skillPoints = parsed.data.wonBracket ? 1 : 0;
+  const gold = parsed.data.roundsCompleted * 80 + (parsed.data.wonBracket ? 1500 : 0);
+  const glory = parsed.data.roundsCompleted * 60 + (parsed.data.wonBracket ? 400 : 0);
 
-  const lvl = computeLevelUp(g.level, g.xp, xp);
   const equip = await getEquippedBonuses(g.id);
   const vitals = syncCurrentVitals(
     { strength: g.strength, agility: g.agility, vitality: g.vitality, intelligence: g.intelligence },
-    equip,
-    lvl.newLevel
+    equip
   );
 
   await prisma.spotGladiator.update({
     where: { id: g.id },
     data: {
-      level: lvl.newLevel,
-      xp: lvl.newXp,
+      xp: { increment: glory },
       gold: { increment: gold },
-      statPoints: { increment: lvl.statPointsGained },
-      skillPoints: { increment: lvl.skillPointsGained },
+      statPoints: { increment: statPoints },
+      skillPoints: { increment: skillPoints },
       winCount: { increment: parsed.data.roundsCompleted },
       ...vitals,
       lastFight: new Date(),
@@ -73,7 +71,7 @@ export async function POST(request: NextRequest) {
       result: parsed.data.wonBracket ? "WIN" : parsed.data.roundsCompleted > 0 ? "WIN" : "LOSS",
       roundsElapsed: parsed.data.roundsCompleted,
       goldEarned: gold,
-      xpEarned: xp,
+      xpEarned: glory,
       log: "tournament",
     },
   });
@@ -81,12 +79,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     data: {
-      reward: {
-        gold,
-        xp,
-        leveledUp: lvl.statPointsGained > 0,
-        newLevel: lvl.newLevel,
-      },
+      reward: { gold, xp: glory, statPointsGained: statPoints, skillPointsGained: skillPoints },
     },
   });
 }

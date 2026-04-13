@@ -16,7 +16,7 @@ export async function GET() {
 
   const g = await prisma.spotGladiator.findUnique({
     where: { userId: session.user.id },
-    select: { level: true },
+    select: { id: true },
   });
   if (!g) {
     return NextResponse.json(
@@ -25,13 +25,30 @@ export async function GET() {
     );
   }
 
+  // tüm düşmanlar — kullanıcı kendi seviyesine göre seçer (level gate YOK)
   const dusmanlar = await prisma.spotDusman.findMany({
-    where: {
-      levelMin: { lte: g.level + 2 },
-      levelMax: { gte: Math.max(1, g.level - 2) },
-    },
     orderBy: [{ isBoss: "asc" }, { tier: "asc" }, { levelMin: "asc" }],
   });
 
-  return NextResponse.json({ success: true, data: dusmanlar });
+  // her rakip için bugünkü dövüş sayısını ekle
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const maclar = await prisma.spotGladiatorMac.groupBy({
+    by: ["opponentRef"],
+    where: {
+      gladiatorId: g.id,
+      opponentType: { in: ["ARENA", "BOSS"] },
+      createdAt: { gte: start },
+    },
+    _count: true,
+  });
+  const countMap = new Map(maclar.map((m) => [m.opponentRef, m._count]));
+
+  const data = dusmanlar.map((d) => ({
+    ...d,
+    todayCount: countMap.get(d.slug) ?? 0,
+    fightsRemaining: Math.max(0, 3 - (countMap.get(d.slug) ?? 0)),
+  }));
+
+  return NextResponse.json({ success: true, data });
 }

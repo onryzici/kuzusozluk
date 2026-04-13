@@ -5,9 +5,12 @@ import { z } from "zod";
 import { simulateBattle, makeCombatant } from "@/lib/gladiator/engine";
 import {
   getEquippedBonuses,
-  computeLevelUp,
   syncCurrentVitals,
+  todayFightCount,
+  diminishingMultiplier,
 } from "@/lib/gladiator/helpers";
+
+const MAX_PER_OPPONENT_PER_DAY = 3;
 
 const schema = z.object({ opponentId: z.string().min(1) });
 
@@ -57,13 +60,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Günlük limit
+  const countBefore = await todayFightCount(me.id, opp.id, "PVP");
+  if (countBefore >= MAX_PER_OPPONENT_PER_DAY) {
+    return NextResponse.json(
+      { success: false, error: { code: "DAILY_LIMIT", message: `bugün ${opp.name} ile ${MAX_PER_OPPONENT_PER_DAY}/${MAX_PER_OPPONENT_PER_DAY} dövüşün dolu` } },
+      { status: 429 }
+    );
+  }
+
   const myEquip = await getEquippedBonuses(me.id);
   const oppEquip = await getEquippedBonuses(opp.id);
 
   const meCombat = makeCombatant({
     id: me.id,
     name: me.name,
-    level: me.level,
     stats: { strength: me.strength, agility: me.agility, vitality: me.vitality, intelligence: me.intelligence, charisma: me.charisma },
     equip: myEquip,
     skills: me.ogrenilen.map((o) => o.skill.slug),
@@ -72,7 +83,6 @@ export async function POST(request: NextRequest) {
   const oppCombat = makeCombatant({
     id: opp.id,
     name: opp.name,
-    level: opp.level,
     stats: { strength: opp.strength, agility: opp.agility, vitality: opp.vitality, intelligence: opp.intelligence, charisma: opp.charisma },
     equip: oppEquip,
     skills: opp.ogrenilen.map((o) => o.skill.slug),
@@ -80,28 +90,28 @@ export async function POST(request: NextRequest) {
   });
 
   const seed = Math.floor(Math.random() * 2 ** 31);
-  const result = simulateBattle(meCombat, oppCombat, seed, null); // PvP full-auto — aksiyon yok
+  const result = simulateBattle(meCombat, oppCombat, seed, null);
 
   const iWon = result.outcome === "player_win";
-  const gold = iWon ? Math.round(20 + opp.level * 8) : 0;
-  const xp = iWon ? Math.round(30 + opp.level * 10) : 5;
+  // PvP ödülü: rakibin gücü + diminishing
+  const oppPower = opp.strength + opp.agility + opp.vitality + opp.intelligence;
+  const mul = iWon ? diminishingMultiplier(countBefore) : 0;
+  const gold = iWon ? Math.round((10 + oppPower) * mul) : 0;
+  const glory = iWon ? Math.round((15 + oppPower * 2) * mul) : 3;
+  const statPoints = iWon && countBefore === 0 ? 1 : 0; // ilk pvp win günde 1 stat
 
-  const lvl = computeLevelUp(me.level, me.xp, xp);
   const vitals = syncCurrentVitals(
     { strength: me.strength, agility: me.agility, vitality: me.vitality, intelligence: me.intelligence },
-    myEquip,
-    lvl.newLevel
+    myEquip
   );
 
   await prisma.$transaction([
     prisma.spotGladiator.update({
       where: { id: me.id },
       data: {
-        level: lvl.newLevel,
-        xp: lvl.newXp,
         gold: { increment: gold },
-        statPoints: { increment: lvl.statPointsGained },
-        skillPoints: { increment: lvl.skillPointsGained },
+        xp: { increment: glory },
+        statPoints: { increment: statPoints },
         pvpWins: iWon ? { increment: 1 } : undefined,
         pvpLosses: !iWon ? { increment: 1 } : undefined,
         currentHp: vitals.currentHp,
@@ -110,7 +120,6 @@ export async function POST(request: NextRequest) {
         lastFight: new Date(),
       },
     }),
-    // rakibin stat'ı da güncellenir (kaybettiyse pvpLosses++)
     prisma.spotGladiator.update({
       where: { id: opp.id },
       data: {
@@ -127,7 +136,7 @@ export async function POST(request: NextRequest) {
         result: iWon ? "WIN" : "LOSS",
         roundsElapsed: result.rounds.length,
         goldEarned: gold,
-        xpEarned: xp,
+        xpEarned: glory,
         log: JSON.stringify(result.rounds).slice(0, 8000),
       },
     }),
@@ -137,7 +146,13 @@ export async function POST(request: NextRequest) {
     success: true,
     data: {
       battle: result,
-      reward: { gold, xp, leveledUp: lvl.statPointsGained > 0, newLevel: lvl.newLevel },
+      reward: {
+        gold,
+        xp: glory,
+        statPointsGained: statPoints,
+        fightsRemaining: MAX_PER_OPPONENT_PER_DAY - (countBefore + 1),
+        diminishedMultiplier: mul,
+      },
     },
   });
 }

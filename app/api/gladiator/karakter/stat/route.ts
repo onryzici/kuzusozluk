@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest) {
     intelligence: parsed.data.stat === "intelligence" ? g.intelligence + parsed.data.amount : g.intelligence,
   };
   const equip = await getEquippedBonuses(g.id);
-  const vitals = syncCurrentVitals(newStats, equip, g.level);
+  const vitals = syncCurrentVitals(newStats, equip);
   Object.assign(update, vitals);
 
   const updated = await prisma.spotGladiator.update({

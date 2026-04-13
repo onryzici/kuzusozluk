@@ -47,12 +47,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (g.level < skill.levelReq) {
-    return NextResponse.json(
-      { success: false, error: { code: "LEVEL_LOW", message: `seviye ${skill.levelReq} gerekli` } },
-      { status: 400 }
-    );
-  }
+  // Level gate YOK — sadece stat gereklilikleri
   if (g.strength < skill.strReq || g.agility < skill.agiReq || g.intelligence < skill.intReq) {
     return NextResponse.json(
       {

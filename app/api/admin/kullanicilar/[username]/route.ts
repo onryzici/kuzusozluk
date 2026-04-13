@@ -97,12 +97,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   if (isCoMod) {
-    if (parsed.data.isBanned !== undefined || parsed.data.banIp || parsed.data.purgeContent) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "banlama yetkiniz yok" } },
-        { status: 403 }
-      );
-    }
+    // CO_MOD banlayabilir ama rol yalnızca CAYLAK/USER/AUTHOR arasında değiştirilebilir
     if (parsed.data.role && !["CAYLAK", "USER", "AUTHOR"].includes(parsed.data.role)) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "sadece çaylak ve yazar rolleri atayabilirsiniz" } },

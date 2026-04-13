@@ -46,7 +46,7 @@ export default function EntryKart({
 }: EntryKartProps) {
   const router = useRouter();
   const isOwner = !!(currentUserId && authorId && currentUserId === authorId);
-  const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "MODERATOR";
+  const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "MODERATOR" || currentUserRole === "CO_MOD";
   const canDelete = isOwner || isAdmin;
   const [deleted, setDeleted] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);

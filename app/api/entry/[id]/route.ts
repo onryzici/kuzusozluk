@@ -94,7 +94,9 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     );
   }
 
-  if (entry.authorId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
+  const role = session.user.role;
+  const isMod = role === "ADMIN" || role === "MODERATOR" || role === "CO_MOD";
+  if (entry.authorId !== session.user.id && !isMod) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "Bu işlem için yetkiniz yok" } },
       { status: 403 }

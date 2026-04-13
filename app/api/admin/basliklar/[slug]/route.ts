@@ -16,7 +16,8 @@ type Params = { params: Promise<{ slug: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  const role = session?.user?.role;
+  if (!session?.user || !["ADMIN", "MODERATOR", "CO_MOD"].includes(role as string)) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "yetkiniz yok" } },
       { status: 403 }
@@ -91,7 +92,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 export async function DELETE(request: NextRequest, { params }: Params) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  const role = session?.user?.role;
+  if (!session?.user || !["ADMIN", "MODERATOR", "CO_MOD"].includes(role as string)) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "yetkiniz yok" } },
       { status: 403 }

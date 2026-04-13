@@ -165,7 +165,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
               initialIsFollowing={isFollowingTopic}
             />
           )}
-          {userRole === "ADMIN" && (
+          {(userRole === "ADMIN" || userRole === "MODERATOR" || userRole === "CO_MOD") && (
             <AdminBaslikIslemleri
               slug={slug}
               title={topic.title}

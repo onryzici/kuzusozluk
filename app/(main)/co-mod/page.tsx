@@ -15,7 +15,15 @@ type User = {
   createdAt: string;
 };
 
+type BanModalState = {
+  username: string;
+  banIp: boolean;
+  purgeContent: boolean;
+  banReason: string;
+};
+
 const COMOD_ROLES = ["CAYLAK", "USER", "AUTHOR"] as const;
+const BANNABLE_ROLES = new Set(["CAYLAK", "USER", "AUTHOR"]);
 
 export default function CoModPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -25,6 +33,7 @@ export default function CoModPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
+  const [banModal, setBanModal] = useState<BanModalState | null>(null);
 
   async function fetchUsers(p = 1, q = "") {
     setLoading(true);
@@ -72,6 +81,52 @@ export default function CoModPage() {
     }
   }
 
+  async function unban(username: string) {
+    setUpdating(username);
+    try {
+      const res = await fetch(`/api/admin/kullanicilar/${username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isBanned: false }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setUsers((prev) => prev.map((u) => (u.username === username ? { ...u, isBanned: false } : u)));
+      } else {
+        alert(json.error?.message || "hata");
+      }
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function submitBan() {
+    if (!banModal) return;
+    const { username, banIp, purgeContent, banReason } = banModal;
+    setUpdating(username);
+    try {
+      const res = await fetch(`/api/admin/kullanicilar/${username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isBanned: true,
+          banIp,
+          purgeContent,
+          banReason: banReason.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setUsers((prev) => prev.map((u) => (u.username === username ? { ...u, isBanned: true } : u)));
+        setBanModal(null);
+      } else {
+        alert(json.error?.message || "hata");
+      }
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -82,7 +137,7 @@ export default function CoModPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        caylak, user ve yazar kullanicilarin rollerini degistirebilirsiniz.
+        çaylak, user ve yazar kullanıcıların rollerini değiştirebilir, banlayabilirsiniz.
       </p>
 
       <input
@@ -111,46 +166,78 @@ export default function CoModPage() {
                   <th className="py-2 pr-4">durum</th>
                   <th className="py-2 pr-4">entry</th>
                   <th className="py-2 pr-4">karma</th>
+                  <th className="py-2">işlemler</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-b">
-                    <td className="py-2 pr-4">
-                      <Link
-                        href={`/kullanici/${user.username}`}
-                        className="font-medium hover:underline"
-                      >
-                        {user.username}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <select
-                        value={user.role}
-                        onChange={(e) => changeRole(user.username, e.target.value)}
-                        disabled={updating === user.username}
-                        className="text-xs border rounded px-1 py-0.5 bg-background disabled:opacity-50"
-                      >
-                        {COMOD_ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {r === "CAYLAK" ? "çaylak" : r === "USER" ? "user" : "yazar"}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 pr-4">
-                      {user.isBanned ? (
-                        <span className="text-xs text-red-600 font-medium">banlı</span>
-                      ) : user.isActive ? (
-                        <span className="text-xs text-green-600">aktif</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">pasif</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4">{user.entryCount}</td>
-                    <td className="py-2 pr-4">{user.karma}</td>
-                  </tr>
-                ))}
+                {users.map((user) => {
+                  const canAct = BANNABLE_ROLES.has(user.role);
+                  return (
+                    <tr key={user.id} className="border-b">
+                      <td className="py-2 pr-4">
+                        <Link
+                          href={`/kullanici/${user.username}`}
+                          className="font-medium hover:underline"
+                        >
+                          {user.username}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <select
+                          value={user.role}
+                          onChange={(e) => changeRole(user.username, e.target.value)}
+                          disabled={updating === user.username || !canAct}
+                          className="text-xs border rounded px-1 py-0.5 bg-background disabled:opacity-50"
+                        >
+                          {canAct ? (
+                            COMOD_ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {r === "CAYLAK" ? "çaylak" : r === "USER" ? "user" : "yazar"}
+                              </option>
+                            ))
+                          ) : (
+                            <option value={user.role}>{user.role.toLowerCase()}</option>
+                          )}
+                        </select>
+                      </td>
+                      <td className="py-2 pr-4">
+                        {user.isBanned ? (
+                          <span className="text-xs text-red-600 font-medium">banlı</span>
+                        ) : user.isActive ? (
+                          <span className="text-xs text-green-600">aktif</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">pasif</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">{user.entryCount}</td>
+                      <td className="py-2 pr-4">{user.karma}</td>
+                      <td className="py-2">
+                        {canAct && (
+                          <button
+                            onClick={() =>
+                              user.isBanned
+                                ? unban(user.username)
+                                : setBanModal({
+                                    username: user.username,
+                                    banIp: true,
+                                    purgeContent: false,
+                                    banReason: "",
+                                  })
+                            }
+                            disabled={updating === user.username}
+                            className={`text-xs px-2 py-1 rounded disabled:opacity-50 ${
+                              user.isBanned
+                                ? "bg-green-600 text-white hover:bg-green-700"
+                                : "bg-red-600 text-white hover:bg-red-700"
+                            }`}
+                          >
+                            {user.isBanned ? "banı kaldır" : "banla"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -173,6 +260,81 @@ export default function CoModPage() {
             </button>
           </div>
         </>
+      )}
+
+      {banModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setBanModal(null)}>
+          <div
+            className="w-full max-w-md bg-background border rounded-lg p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h2 className="text-base font-semibold">{banModal.username} banlanacak</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                seçenekleri ayarla ve onayla.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={banModal.banIp}
+                onChange={(e) => setBanModal({ ...banModal, banIp: e.target.checked })}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="font-medium">ip ban</div>
+                <div className="text-xs text-muted-foreground">
+                  kullanıcının audit log&apos;daki bütün ip&apos;leri engellenir.
+                </div>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={banModal.purgeContent}
+                onChange={(e) => setBanModal({ ...banModal, purgeContent: e.target.checked })}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="font-medium">tüm içerikleri sil</div>
+                <div className="text-xs text-muted-foreground">
+                  entry, yorum, oy, favori, mesaj, bildirim, anket, ukde. geri alınamaz.
+                </div>
+              </div>
+            </label>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium">sebep (opsiyonel)</label>
+              <input
+                type="text"
+                value={banModal.banReason}
+                onChange={(e) => setBanModal({ ...banModal, banReason: e.target.value })}
+                placeholder="küfür, spam, vs."
+                className="w-full border rounded-md px-2 py-1.5 text-sm bg-background"
+                maxLength={500}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setBanModal(null)}
+                disabled={updating === banModal.username}
+                className="text-xs px-3 py-1.5 border rounded hover:bg-accent disabled:opacity-50"
+              >
+                vazgeç
+              </button>
+              <button
+                onClick={submitBan}
+                disabled={updating === banModal.username}
+                className="text-xs px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {updating === banModal.username ? "banlanıyor..." : "banla"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

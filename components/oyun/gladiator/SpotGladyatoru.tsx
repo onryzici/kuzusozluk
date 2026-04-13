@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import GladiatorAvatar from "./GladiatorAvatar";
-import { Swords, Shield, Sparkles, Coins, Heart, Zap, Trophy, Store, BookOpen, ArrowLeft, Plus, Users } from "lucide-react";
-import type { SpotBattleResult, SpotTurnResult, SpotAction } from "@/lib/gladiator/engine";
+import InteractiveBattle from "./InteractiveBattle";
+import { Swords, Shield, Sparkles, Coins, Trophy, Store, BookOpen, ArrowLeft, Plus, Users } from "lucide-react";
+import type { SpotBattleResult, SpotTurnResult } from "@/lib/gladiator/engine";
 
 // ------------ tipler ------------
 type Esya = {
@@ -114,7 +115,19 @@ type Liderlik = {
   byPvp: { name: string; username: string; level: number; pvpWins: number }[];
 };
 
-type View = "hub" | "create" | "stats" | "inventory" | "shop" | "skills" | "arena" | "pvp" | "fight" | "leaderboard" | "matchHistory";
+type View = "hub" | "create" | "stats" | "inventory" | "shop" | "skills" | "arena" | "pvp" | "fight" | "leaderboard" | "matchHistory" | "tournament";
+
+// unvan hesaplama: kalıcı özellikler
+function computeTitle(g: Gladiator): string {
+  if (g.bossKills >= 5) return "arena efsanesi";
+  if (g.pvpWins >= 20) return "pvp kralı";
+  if (g.winCount >= 100) return "çaylak avcısı";
+  if (g.winCount >= 50) return "veteran";
+  if (g.winCount >= 25) return "deneyimli";
+  if (g.winCount >= 10) return "çırak";
+  if (g.bossKills >= 1) return "boss yenen";
+  return "çaylak gladyatör";
+}
 
 const RARITY_COLOR: Record<string, string> = {
   COMMON: "text-zinc-400",
@@ -199,6 +212,7 @@ export default function SpotGladyatoru() {
       {view === "shop" && <ShopScreen g={g} onRefresh={refresh} setMsg={setMsg} onBack={() => setView("hub")} />}
       {view === "skills" && <SkillsScreen g={g} onRefresh={refresh} setMsg={setMsg} onBack={() => setView("hub")} />}
       {view === "arena" && <ArenaScreen g={g} onFight={(enemy) => setView("fight") /* placeholder */} onRefresh={refresh} setMsg={setMsg} onBack={() => setView("hub")} />}
+      {view === "tournament" && <TournamentScreen g={g} onRefresh={refresh} setMsg={setMsg} onBack={() => setView("hub")} />}
       {view === "pvp" && <PvPScreen g={g} onRefresh={refresh} setMsg={setMsg} onBack={() => setView("hub")} />}
       {view === "leaderboard" && <LeaderboardScreen onBack={() => setView("hub")} />}
       {view === "matchHistory" && <MatchHistory g={g} onBack={() => setView("hub")} />}
@@ -224,9 +238,10 @@ function Header({ g, view, setView }: { g: Gladiator; view: View; setView: (v: V
         size={60}
       />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h2 className="text-sm font-bold">{g.name}</h2>
           <span className="text-[10px] px-1.5 rounded bg-primary/10 text-primary">lv {g.level}</span>
+          <span className="text-[10px] px-1.5 rounded bg-purple-500/10 text-purple-500 italic">{computeTitle(g)}</span>
           {g.statPoints > 0 && <span className="text-[10px] px-1.5 rounded bg-amber-500/20 text-amber-500 font-bold">+{g.statPoints} stat</span>}
           {g.skillPoints > 0 && <span className="text-[10px] px-1.5 rounded bg-blue-500/20 text-blue-500 font-bold">+{g.skillPoints} skill</span>}
         </div>
@@ -260,6 +275,7 @@ function Header({ g, view, setView }: { g: Gladiator; view: View; setView: (v: V
 function Hub({ g, setView }: { g: Gladiator; setView: (v: View) => void }) {
   const cards: { view: View; label: string; desc: string; icon: React.ReactNode; highlight?: boolean }[] = [
     { view: "arena", label: "arena", desc: "AI rakiplerle dövüş, altın ve xp kazan", icon: <Swords className="h-5 w-5" /> },
+    { view: "tournament", label: "turnuva", desc: "8 rakip bracket, zincirleme dövüş, büyük ödül", icon: <Trophy className="h-5 w-5" /> },
     { view: "pvp", label: "pvp", desc: "diğer yazarların gladyatörleriyle", icon: <Users className="h-5 w-5" /> },
     { view: "stats", label: "statlar", desc: "puan dağıt, karakterini güçlendir", icon: <Sparkles className="h-5 w-5" />, highlight: g.statPoints > 0 },
     { view: "skills", label: "yetenekler", desc: "yeni yetenek öğren", icon: <BookOpen className="h-5 w-5" />, highlight: g.skillPoints > 0 },
@@ -812,53 +828,45 @@ function ArenaScreen({ g, onRefresh, setMsg, onBack }: {
   onBack: () => void;
 }) {
   const [list, setList] = useState<Dusman[]>([]);
-  const [battle, setBattle] = useState<SpotBattleResult | null>(null);
-  const [reward, setReward] = useState<{ gold: number; xp: number; leveledUp: boolean; newLevel: number } | null>(null);
   const [fighting, setFighting] = useState<Dusman | null>(null);
-  const [loadingFight, setLoadingFight] = useState(false);
+  const [equipBonuses, setEquipBonuses] = useState<{ attackBonus: number; defenseBonus: number; hpBonus: number; manaBonus: number; critBonus: number; dodgeBonus: number }>({
+    attackBonus: 0, defenseBonus: 0, hpBonus: 0, manaBonus: 0, critBonus: 0, dodgeBonus: 0,
+  });
 
   useEffect(() => {
     fetch("/api/gladiator/dusmanlar").then((r) => r.json()).then((j) => {
       if (j.success) setList(j.data);
     });
+    // equip bonus'u al
+    fetch("/api/gladiator/karakter").then((r) => r.json()).then((j) => {
+      if (j.success && j.data?.envanter && j.data?.equipped) {
+        const e = j.data.equipped;
+        const equippedIds = [e.weaponItemId, e.armorItemId, e.helmetItemId, e.shieldItemId, e.bootsItemId].filter(Boolean);
+        const bonus = { attackBonus: 0, defenseBonus: 0, hpBonus: 0, manaBonus: 0, critBonus: 0, dodgeBonus: 0 };
+        for (const inv of j.data.envanter) {
+          if (equippedIds.includes(inv.itemId)) {
+            bonus.attackBonus += inv.item.attackBonus;
+            bonus.defenseBonus += inv.item.defenseBonus;
+            bonus.hpBonus += inv.item.hpBonus;
+            bonus.manaBonus += inv.item.manaBonus;
+            bonus.critBonus += inv.item.critBonus;
+            bonus.dodgeBonus += inv.item.dodgeBonus;
+          }
+        }
+        setEquipBonuses(bonus);
+      }
+    });
   }, []);
 
-  async function fight(enemy: Dusman) {
-    setLoadingFight(true);
-    setFighting(enemy);
-    setBattle(null);
-    setReward(null);
-    try {
-      const res = await fetch("/api/gladiator/dovus", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dusmanSlug: enemy.slug }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setBattle(json.data.battle);
-        setReward(json.data.reward);
-        await onRefresh();
-      } else {
-        setMsg(json.error?.message || "hata");
-        setFighting(null);
-      }
-    } finally {
-      setLoadingFight(false);
-    }
-  }
-
-  if (fighting && battle) {
+  if (fighting) {
     return (
-      <BattleReplay
-        playerG={g}
+      <InteractiveBattle
+        player={g}
+        playerEquipBonuses={equipBonuses}
         enemy={fighting}
-        battle={battle}
-        reward={reward}
-        onClose={() => {
+        onFinish={async () => {
+          await onRefresh();
           setFighting(null);
-          setBattle(null);
-          onBack();
         }}
       />
     );
@@ -867,7 +875,9 @@ function ArenaScreen({ g, onRefresh, setMsg, onBack }: {
   return (
     <div className="border border-border rounded-lg p-3 space-y-2">
       <h3 className="text-sm font-bold">arena — rakip seç</h3>
-      {loadingFight && <p className="text-xs text-muted-foreground">dövüşülüyor...</p>}
+      {list.length === 0 && (
+        <p className="text-xs text-muted-foreground py-4 text-center">yükleniyor...</p>
+      )}
       <div className="space-y-1.5">
         {list.map((d) => (
           <div key={d.slug} className={`p-2 border rounded ${d.isBoss ? "border-amber-500/60 bg-amber-500/5" : "border-border/60"}`}>
@@ -888,9 +898,8 @@ function ArenaScreen({ g, onRefresh, setMsg, onBack }: {
                 </div>
                 <div className="text-[10px] text-muted-foreground">+{d.xpReward} xp</div>
                 <button
-                  disabled={loadingFight}
-                  onClick={() => fight(d)}
-                  className="text-[11px] mt-1 px-2 py-0.5 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 disabled:opacity-30"
+                  onClick={() => setFighting(d)}
+                  className="text-[11px] mt-1 px-2 py-0.5 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
                 >
                   dövüş
                 </button>
@@ -1254,6 +1263,164 @@ type Mac = {
   xpEarned: number;
   createdAt: string;
 };
+
+// ------------ Tournament ------------
+
+function TournamentScreen({ g, onRefresh, setMsg, onBack }: {
+  g: Gladiator;
+  onRefresh: () => Promise<void>;
+  setMsg: (m: string) => void;
+  onBack: () => void;
+}) {
+  const [bracket, setBracket] = useState<Dusman[]>([]);
+  const [idx, setIdx] = useState(0);
+  const [wins, setWins] = useState(0);
+  const [state, setState] = useState<"idle" | "fighting" | "ended">("idle");
+  const [equipBonuses, setEquipBonuses] = useState({
+    attackBonus: 0, defenseBonus: 0, hpBonus: 0, manaBonus: 0, critBonus: 0, dodgeBonus: 0,
+  });
+  const [finalReward, setFinalReward] = useState<{ gold: number; xp: number; leveledUp: boolean; newLevel: number } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/gladiator/turnuva").then((r) => r.json()).then((j) => {
+      if (j.success) setBracket(j.data.bracket);
+    });
+    fetch("/api/gladiator/karakter").then((r) => r.json()).then((j) => {
+      if (j.success && j.data?.envanter && j.data?.equipped) {
+        const e = j.data.equipped;
+        const equippedIds = [e.weaponItemId, e.armorItemId, e.helmetItemId, e.shieldItemId, e.bootsItemId].filter(Boolean);
+        const bonus = { attackBonus: 0, defenseBonus: 0, hpBonus: 0, manaBonus: 0, critBonus: 0, dodgeBonus: 0 };
+        for (const inv of j.data.envanter) {
+          if (equippedIds.includes(inv.itemId)) {
+            bonus.attackBonus += inv.item.attackBonus;
+            bonus.defenseBonus += inv.item.defenseBonus;
+            bonus.hpBonus += inv.item.hpBonus;
+            bonus.manaBonus += inv.item.manaBonus;
+            bonus.critBonus += inv.item.critBonus;
+            bonus.dodgeBonus += inv.item.dodgeBonus;
+          }
+        }
+        setEquipBonuses(bonus);
+      }
+    });
+  }, []);
+
+  async function finishTournament(finalWins: number, won: boolean) {
+    const res = await fetch("/api/gladiator/turnuva/bitir", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roundsCompleted: finalWins, wonBracket: won }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      setFinalReward(json.data.reward);
+      await onRefresh();
+    } else {
+      setMsg(json.error?.message || "hata");
+    }
+  }
+
+  if (state === "fighting" && bracket[idx]) {
+    return (
+      <InteractiveBattle
+        player={g}
+        playerEquipBonuses={equipBonuses}
+        enemy={bracket[idx]}
+        onFinish={async (outcome) => {
+          if (outcome === "player_win") {
+            const newWins = wins + 1;
+            setWins(newWins);
+            if (idx + 1 >= bracket.length) {
+              setState("ended");
+              await finishTournament(newWins, true);
+            } else {
+              setIdx(idx + 1);
+              setState("idle");
+            }
+          } else {
+            // kayıp — turnuva biter
+            setState("ended");
+            await finishTournament(wins, false);
+          }
+        }}
+      />
+    );
+  }
+
+  if (state === "ended") {
+    return (
+      <div className="border border-border rounded-lg p-6 text-center space-y-3">
+        <Trophy className={`h-12 w-12 mx-auto ${wins === bracket.length ? "text-amber-500" : "text-muted-foreground"}`} />
+        <h3 className="text-lg font-bold">
+          {wins === bracket.length ? "🏆 ŞAMPİYON" : `turnuva bitti (${wins}/${bracket.length})`}
+        </h3>
+        {finalReward && (
+          <div className="text-sm">
+            <div><span className="text-amber-500 font-bold">+{finalReward.gold}</span> altın • <span className="text-blue-400 font-bold">+{finalReward.xp}</span> xp</div>
+            {finalReward.leveledUp && <div className="text-amber-400 font-bold mt-1">✨ LEVEL {finalReward.newLevel}!</div>}
+          </div>
+        )}
+        <button onClick={onBack} className="px-4 py-2 bg-primary text-primary-foreground rounded font-bold">kapat</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-border rounded-lg p-3 space-y-3">
+      <div>
+        <h3 className="text-sm font-bold">günün turnuvası</h3>
+        <p className="text-xs text-muted-foreground">8 rakip, zincirleme. maçlar arası iyileşme yok. bitirince büyük ödül.</p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1.5">
+        {bracket.map((d, i) => {
+          const done = i < idx;
+          const current = i === idx;
+          return (
+            <div
+              key={d.slug}
+              className={`p-2 border rounded text-[10px] text-center ${
+                done ? "border-green-500/60 bg-green-500/10" :
+                current ? "border-primary bg-primary/10" :
+                d.isBoss ? "border-amber-500/60" : "border-border/60"
+              }`}
+            >
+              <div className="font-bold">{i + 1}</div>
+              <div className="truncate">{d.isBoss && "👑"}{d.name}</div>
+              <div className="text-muted-foreground mt-0.5">
+                {done ? "✓" : current ? "aktif" : `lv${d.levelMin}`}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="text-center">
+        <span className="text-xs text-muted-foreground">ilerleme: </span>
+        <span className="font-bold">{idx}/{bracket.length}</span>
+      </div>
+
+      <button
+        disabled={bracket.length === 0 || state === "fighting"}
+        onClick={() => setState("fighting")}
+        className="w-full py-2 bg-destructive text-destructive-foreground rounded font-bold hover:bg-destructive/90 disabled:opacity-30"
+      >
+        {idx === 0 ? "turnuvaya başla" : `${idx + 1}. maça devam`}
+      </button>
+
+      {idx > 0 && (
+        <button
+          onClick={async () => { setState("ended"); await finishTournament(wins, false); }}
+          className="w-full py-1 text-xs text-muted-foreground hover:text-destructive"
+        >
+          turnuvayı bırak (şu ana kadarki ödülü al)
+        </button>
+      )}
+
+      <button onClick={onBack} className="w-full py-1.5 text-xs border rounded hover:bg-accent">kapat</button>
+    </div>
+  );
+}
 
 function MatchHistory({ g, onBack }: { g: Gladiator; onBack: () => void }) {
   const [maclar, setMaclar] = useState<Mac[]>([]);

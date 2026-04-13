@@ -7,6 +7,26 @@ import {
   makeCombatant,
   xpForLevel,
 } from "./engine";
+import { DUSMANLAR, ESYALAR, YETENEKLER } from "./seedData";
+
+// Katalog boşsa seed verisini yükler. Idempotent.
+export async function ensureCatalog(): Promise<void> {
+  const [dCount, eCount, yCount] = await Promise.all([
+    prisma.spotDusman.count(),
+    prisma.spotEsya.count(),
+    prisma.spotYetenek.count(),
+  ]);
+
+  if (dCount === 0) {
+    await prisma.spotDusman.createMany({ data: DUSMANLAR, skipDuplicates: true });
+  }
+  if (eCount === 0) {
+    await prisma.spotEsya.createMany({ data: ESYALAR, skipDuplicates: true });
+  }
+  if (yCount === 0) {
+    await prisma.spotYetenek.createMany({ data: YETENEKLER, skipDuplicates: true });
+  }
+}
 
 export async function getEquippedBonuses(gladiatorId: string): Promise<SpotEquipBonuses> {
   const equip = await prisma.spotGladiatorKusanmis.findUnique({

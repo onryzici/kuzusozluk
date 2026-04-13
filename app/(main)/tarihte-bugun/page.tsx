@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Calendar } from "lucide-react";
 import { formatTarih } from "@/lib/utils/format";
+import { auth } from "@/lib/auth";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 export const metadata = {
   title: "tarihte bugün - kuzusozluk",
@@ -22,11 +24,19 @@ export default async function TarihteBugunPage() {
     yearRanges.push({ start, end, year });
   }
 
+  const session = await auth();
+  const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
+
   const entries = await prisma.entry.findMany({
     where: {
-      OR: yearRanges.map((r) => ({
-        createdAt: { gte: r.start, lte: r.end },
-      })),
+      AND: [
+        {
+          OR: yearRanges.map((r) => ({
+            createdAt: { gte: r.start, lte: r.end },
+          })),
+        },
+        caylakEntryWhere(viewer),
+      ],
     },
     orderBy: { upvotes: "desc" },
     take: 20,

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import EntryKart from "@/components/entry/EntryKart";
 import Sayfalama from "@/components/shared/Sayfalama";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 export const metadata = {
   title: "son entryler - kuzusozluk",
@@ -18,9 +19,13 @@ export default async function SonSayfa({ searchParams }: Props) {
   const page = Math.max(1, parseInt(sayfa || "1"));
   const pageSize = 10;
 
-  const [session, entries, total] = await Promise.all([
-    auth(),
+  const session = await auth();
+  const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
+  const where = caylakEntryWhere(viewer);
+
+  const [entries, total] = await Promise.all([
     prisma.entry.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -34,7 +39,7 @@ export default async function SonSayfa({ searchParams }: Props) {
         _count: { select: { comments: true } },
       },
     }),
-    prisma.entry.count(),
+    prisma.entry.count({ where }),
   ]);
 
   const currentUserId = (session?.user as any)?.id || null;

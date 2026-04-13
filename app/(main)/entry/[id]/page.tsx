@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import EntryKart from "@/components/entry/EntryKart";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { canSeeCaylak } from "@/lib/utils/caylakFilter";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -21,16 +23,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EntrySayfa({ params }: Props) {
   const { id } = await params;
-  const entry = await prisma.entry.findUnique({
-    where: { id },
-    include: {
-      author: { select: { id: true, username: true, avatarUrl: true } },
-      topic: { select: { id: true, title: true, slug: true } },
-      _count: { select: { comments: true } },
-    },
-  });
+  const [session, entry] = await Promise.all([
+    auth(),
+    prisma.entry.findUnique({
+      where: { id },
+      include: {
+        author: { select: { id: true, username: true, avatarUrl: true, role: true } },
+        topic: { select: { id: true, title: true, slug: true } },
+        _count: { select: { comments: true } },
+      },
+    }),
+  ]);
 
   if (!entry) notFound();
+
+  const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
+  if (
+    entry.author.role === "CAYLAK" &&
+    !canSeeCaylak(viewer) &&
+    entry.authorId !== viewer.id
+  ) {
+    notFound();
+  }
 
   return (
     <div className="w-full px-4 lg:px-8 py-6">

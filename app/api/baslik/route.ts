@@ -83,6 +83,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (session.user.role === "CAYLAK") {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN", message: "çaylaklar başlık açamaz. önce yazar olmanız gerekiyor." } },
+      { status: 403 }
+    );
+  }
+
   const { allowed } = await checkRateLimit(rateLimiters.baslikOlustur, session.user.id);
   if (!allowed) {
     return NextResponse.json(

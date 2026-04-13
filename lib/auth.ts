@@ -44,13 +44,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/giris",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id!;
         token.username = (user as unknown as { username: string }).username;
         token.role = (user as unknown as { role: string }).role;
         token.karma = (user as unknown as { karma: number }).karma;
         token.isBanned = (user as unknown as { isBanned: boolean }).isBanned;
+        token.iat = Math.floor(Date.now() / 1000);
+      }
+      if (trigger === "update" && token.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, karma: true, isBanned: true, username: true },
+        });
+        if (u) {
+          token.role = u.role;
+          token.karma = u.karma;
+          token.isBanned = u.isBanned;
+          token.username = u.username;
+        }
       }
       return token;
     },
@@ -62,6 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       u.role = token.role;
       u.karma = token.karma;
       u.isBanned = token.isBanned;
+      u.iat = token.iat;
       return session;
     },
   },

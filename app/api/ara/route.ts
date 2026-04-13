@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { meili } from "@/lib/meilisearch";
+import { auth } from "@/lib/auth";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -54,8 +56,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (tip === "entry") {
+    const session = await auth();
+    const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
     const entries = await prisma.entry.findMany({
-      where: { content: { contains: q, mode: "insensitive" } },
+      where: {
+        content: { contains: q, mode: "insensitive" },
+        ...caylakEntryWhere(viewer),
+      },
       take: 20,
       include: {
         author: { select: { username: true } },

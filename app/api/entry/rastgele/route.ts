@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 export async function GET() {
-  const count = await prisma.entry.count();
+  const session = await auth();
+  const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
+  const where = caylakEntryWhere(viewer);
+  const count = await prisma.entry.count({ where });
   if (count === 0) {
     return NextResponse.json(
       { success: false, error: { code: "NOT_FOUND", message: "hic entry yok" } },
@@ -12,6 +17,7 @@ export async function GET() {
 
   const skip = Math.floor(Math.random() * count);
   const entries = await prisma.entry.findMany({
+    where,
     skip,
     take: 1,
     include: {

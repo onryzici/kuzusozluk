@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import AramaSayfaInput from "@/components/shared/AramaSayfaInput";
 import { toSlug } from "@/lib/utils/slug";
+import { auth } from "@/lib/auth";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 type Props = {
   searchParams: Promise<{ q?: string; tip?: string }>;
@@ -55,8 +57,13 @@ export default async function AramaSayfa({ searchParams }: Props) {
       </>
     );
   } else if (tip === "entry") {
+    const session = await auth();
+    const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
     const entries = await prisma.entry.findMany({
-      where: { content: { contains: q, mode: "insensitive" } },
+      where: {
+        content: { contains: q, mode: "insensitive" },
+        ...caylakEntryWhere(viewer),
+      },
       take: 50,
       include: { author: { select: { username: true } }, topic: { select: { title: true, slug: true } } },
     });

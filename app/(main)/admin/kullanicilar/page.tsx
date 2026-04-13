@@ -48,12 +48,36 @@ export default function KullanicilarPage() {
   }, [page, search]);
 
   async function toggleBan(username: string, isBanned: boolean) {
+    const body: Record<string, unknown> = { isBanned: !isBanned };
+
+    if (!isBanned) {
+      // banlıyoruz — ek seçenekleri sor
+      const banIp = window.confirm(
+        `${username} kullanıcısının ip adresleri de banlansın mı?\n\n` +
+        "tamam = ip ban (bilinen tüm ip'leri engellenir)\n" +
+        "iptal = sadece hesap banı"
+      );
+      const purge = window.confirm(
+        `${username} kullanıcısının tüm içerikleri (entry, yorum, oy, mesaj) silinsin mi?\n\n` +
+        "tamam = evet sil\n" +
+        "iptal = içeriği bırak"
+      );
+      const reason = window.prompt("ban sebebi (opsiyonel):", "") || "";
+
+      body.banIp = banIp;
+      body.purgeContent = purge;
+      if (reason.trim()) body.banReason = reason.trim();
+
+      const summary = `${username} banlanacak.\n- ip ban: ${banIp ? "evet" : "hayır"}\n- içerik sil: ${purge ? "evet" : "hayır"}\n- sebep: ${reason || "-"}\n\nonaylıyor musun?`;
+      if (!window.confirm(summary)) return;
+    }
+
     setUpdating(username);
     try {
       const res = await fetch(`/api/admin/kullanicilar/${username}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isBanned: !isBanned }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (json.success) {
@@ -62,6 +86,8 @@ export default function KullanicilarPage() {
             u.username === username ? { ...u, isBanned: !isBanned } : u
           )
         );
+      } else {
+        alert(json.error?.message || "hata");
       }
     } finally {
       setUpdating(null);

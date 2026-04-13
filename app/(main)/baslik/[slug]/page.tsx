@@ -12,6 +12,7 @@ import SiralamaSekmeleri from "@/components/entry/SiralamaSekmeleri";
 import AdminBaslikIslemleri from "@/components/baslik/AdminBaslikIslemleri";
 import AnketGoster from "@/components/anket/AnketGoster";
 import { auth } from "@/lib/auth";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -103,8 +104,8 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
         : { createdAt: "asc" as const };
 
   const userRole = (session?.user as any)?.role;
-  const canSeeCaylak = userRole === "ADMIN" || userRole === "MODERATOR";
   const currentUserId = (session?.user as any)?.id || null;
+  const caylakFilter = caylakEntryWhere({ id: currentUserId || undefined, role: userRole });
 
   // Tüm sorguları tek seferde paralel çalıştır
   const [topicFollowResult, blockedResult, entries, total] = await Promise.all([
@@ -122,7 +123,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
     prisma.entry.findMany({
       where: {
         topicId: topic.id,
-        ...(!canSeeCaylak && { author: { role: { not: "CAYLAK" as const } } }),
+        ...caylakFilter,
       },
       orderBy,
       skip: (page - 1) * pageSize,
@@ -137,7 +138,7 @@ export default async function BaslikDetaySayfa({ params, searchParams }: Props) 
     prisma.entry.count({
       where: {
         topicId: topic.id,
-        ...(!canSeeCaylak && { author: { role: { not: "CAYLAK" as const } } }),
+        ...caylakFilter,
       },
     }),
   ]);

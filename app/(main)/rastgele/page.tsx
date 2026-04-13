@@ -3,11 +3,16 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Shuffle } from "lucide-react";
 import { formatTarih } from "@/lib/utils/format";
+import { auth } from "@/lib/auth";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 export const dynamic = "force-dynamic";
 
 export default async function RastgelePage() {
-  const count = await prisma.entry.count();
+  const session = await auth();
+  const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
+  const where = caylakEntryWhere(viewer);
+  const count = await prisma.entry.count({ where });
 
   if (count === 0) {
     return (
@@ -21,6 +26,7 @@ export default async function RastgelePage() {
 
   const skip = Math.floor(Math.random() * count);
   const entries = await prisma.entry.findMany({
+    where,
     skip,
     take: 1,
     include: {

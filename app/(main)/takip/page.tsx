@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import EntryKart from "@/components/entry/EntryKart";
 import Sayfalama from "@/components/shared/Sayfalama";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 export const metadata = {
   title: "takip - kuzusozluk",
@@ -43,7 +44,11 @@ export default async function TakipSayfa({ searchParams }: Props) {
     );
   }
 
-  const where = { authorId: { in: followedUserIds } };
+  const viewer = { id: currentUserId, role: (session.user as any)?.role };
+  const where = {
+    authorId: { in: followedUserIds },
+    ...caylakEntryWhere(viewer),
+  };
 
   const [entries, total] = await Promise.all([
     prisma.entry.findMany({

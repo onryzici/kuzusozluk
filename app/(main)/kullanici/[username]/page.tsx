@@ -9,6 +9,7 @@ import TakipButon from "@/components/kullanici/TakipButon";
 import EngelleButon from "@/components/kullanici/EngelleButon";
 import Image from "next/image";
 import TaslaklarListesi from "@/components/baslik/TaslaklarListesi";
+import { caylakEntryWhere } from "@/lib/utils/caylakFilter";
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -48,8 +49,9 @@ export default async function KullaniciProfil({ params, searchParams }: Props) {
   // Build tab content query based on active tab
   function getTabQuery() {
     if (sekme === "entryler") {
+      const viewer = { id: (session?.user as any)?.id, role: (session?.user as any)?.role };
       return prisma.entry.findMany({
-        where: { authorId: userId },
+        where: { authorId: userId, ...caylakEntryWhere(viewer) },
         orderBy: { createdAt: "desc" },
         take: 20,
         include: {

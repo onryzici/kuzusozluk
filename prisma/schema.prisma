@@ -18,6 +18,8 @@ model User {
   role         Role     @default(CAYLAK)
   isActive     Boolean  @default(false)
   isBanned     Boolean  @default(false)
+  bannedAt     DateTime?
+  banReason    String?   @db.VarChar(500)
   karma        Int      @default(0)
   entryCount   Int      @default(0)
   generation   Int      @default(1)
@@ -417,4 +419,16 @@ model AuditLog {
   @@index([createdAt])
   @@index([userId])
   @@index([action])
+}
+
+model BannedIp {
+  id        String   @id @default(cuid())
+  ipAddress String   @unique @db.VarChar(45)
+  reason    String?  @db.VarChar(500)
+  bannedBy  String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress])
+  @@index([userId])
 }

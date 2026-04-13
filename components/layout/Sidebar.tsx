@@ -14,32 +14,48 @@ type GundemItem = {
   isPinned?: boolean;
 };
 
+const PAGE_SIZE = 40;
+
 export default function Sidebar() {
   const [gundem, setGundem] = useState<GundemItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const pathname = usePathname();
 
-  const fetchGundem = useCallback(() => {
-    setLoading(true);
-    fetch("/api/baslik?siralama=son&boyut=40&t=" + Date.now(), { cache: "no-store" })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success) setGundem(json.data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const fetchPage = useCallback(async (p: number, append: boolean) => {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/baslik?siralama=son&sayfa=${p}&boyut=${PAGE_SIZE}&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json();
+      if (json.success) {
+        setGundem((prev) => (append ? [...prev, ...json.data] : json.data));
+        setHasMore(!!json.meta?.hasMore);
+        setPage(p);
+      }
+    } catch {}
+    finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   }, []);
 
-  useEffect(() => {
-    fetchGundem();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const refresh = useCallback(() => fetchPage(1, false), [fetchPage]);
 
   useEffect(() => {
-    function handleRefresh() { fetchGundem(); }
+    fetchPage(1, false);
+  }, [fetchPage]);
+
+  useEffect(() => {
+    function handleRefresh() { refresh(); }
     window.addEventListener("sidebar:refresh", handleRefresh);
     return () => window.removeEventListener("sidebar:refresh", handleRefresh);
-  }, [fetchGundem]);
+  }, [refresh]);
 
   return (
     <aside className="hidden lg:block w-72 shrink-0 h-full overflow-y-auto border-r border-border bg-background">
@@ -47,7 +63,7 @@ export default function Sidebar() {
         <div className="flex items-center justify-between px-2 py-2">
           <span className="text-xs text-muted-foreground">bugün</span>
           <button
-            onClick={fetchGundem}
+            onClick={refresh}
             className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
             title="yenile"
           >
@@ -81,8 +97,22 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {gundem.length === 0 && (
+        {gundem.length === 0 && !loading && (
+          <p className="text-xs text-muted-foreground text-center py-8">başlık yok.</p>
+        )}
+
+        {loading && gundem.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-8">yükleniyor...</p>
+        )}
+
+        {hasMore && gundem.length > 0 && (
+          <button
+            onClick={() => fetchPage(page + 1, true)}
+            disabled={loadingMore}
+            className="w-full mt-2 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-sm disabled:opacity-50"
+          >
+            {loadingMore ? "yükleniyor..." : "daha fazla"}
+          </button>
         )}
       </div>
     </aside>
